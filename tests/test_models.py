@@ -2,7 +2,7 @@
 
 import sys
 import importlib
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Import models using importlib due to package name starting with digit
 models = importlib.import_module("1ai_social.models")
@@ -199,7 +199,7 @@ class TestPostModel:
     def test_post_with_timestamps(self):
         """Test post with scheduled and published times."""
         content = Content(text="test", platform=Platform.TIKTOK)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         post = Post(
             id="post_123",
             content=content,
