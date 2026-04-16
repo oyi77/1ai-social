@@ -106,27 +106,47 @@ class TestConfidenceUpdater:
 
     def test_update_hook_confidence(self):
         """Test updating hook confidence."""
-        updater = ConfidenceUpdater()
-        new_score = updater.update_hook_confidence("landlord_ai", 50000)
-        assert new_score > 0.9
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            json.dump({}, f)
+            f.flush()
+            updater = ConfidenceUpdater(scores_path=f.name)
+            new_score = updater.update_hook_confidence("landlord_ai", 50000)
+            assert new_score > 0.9
 
     def test_get_confidence(self):
         """Test getting hook confidence."""
-        updater = ConfidenceUpdater()
-        score = updater.get_confidence("landlord_ai")
-        assert score == 0.9
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            json.dump({}, f)
+            f.flush()
+            updater = ConfidenceUpdater(scores_path=f.name)
+            score = updater.get_confidence("landlord_ai")
+            assert score == 0.9
 
     def test_get_confidence_unknown_hook(self):
         """Test getting confidence for unknown hook."""
-        updater = ConfidenceUpdater()
-        score = updater.get_confidence("unknown_hook")
-        assert score == 0.5
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            json.dump({}, f)
+            f.flush()
+            updater = ConfidenceUpdater(scores_path=f.name)
+            score = updater.get_confidence("unknown_hook")
+            assert score == 0.5
 
     def test_get_top_hooks(self):
         """Test getting top hooks."""
-        updater = ConfidenceUpdater()
-        top = updater.get_top_hooks(limit=3)
-        assert len(top) <= 3
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False, mode="w") as f:
+            json.dump({}, f)
+            f.flush()
+            updater = ConfidenceUpdater(scores_path=f.name)
+            top = updater.get_top_hooks(limit=3)
+            assert len(top) <= 3
         assert all(isinstance(h, tuple) for h in top)
         assert all(len(h) == 2 for h in top)
 

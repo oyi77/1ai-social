@@ -39,7 +39,9 @@ class ConfidenceUpdater:
     def _load(self) -> Dict[str, float]:
         if self._path.exists():
             try:
-                return json.loads(self._path.read_text())
+                data = json.loads(self._path.read_text())
+                if data:
+                    return data
             except (json.JSONDecodeError, OSError):
                 pass
         return dict(BASE_CONFIDENCE)
