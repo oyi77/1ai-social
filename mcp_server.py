@@ -9,8 +9,16 @@ from typing import Any
 
 import sentry_sdk
 from fastmcp import FastMCP
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from .health import HealthChecker
+from .billing.dashboard import (
+    get_billing_overview,
+    get_usage_details,
+    get_invoices,
+    get_payment_methods,
+)
 
 
 def init_sentry():
@@ -53,6 +61,19 @@ mcp = FastMCP("1ai-social")
 
 # Initialize health checker
 _health_checker = None
+
+# Database session factory
+_session_factory = None
+
+
+def _get_session_factory():
+    """Get or create database session factory."""
+    global _session_factory
+    if _session_factory is None:
+        db_url = os.getenv("DATABASE_URL", "postgresql://localhost/1ai_social")
+        engine = create_engine(db_url)
+        _session_factory = sessionmaker(bind=engine)
+    return _session_factory
 
 
 def _get_health_checker() -> HealthChecker:
@@ -137,12 +158,79 @@ def add_breadcrumb(
     )
 
 
-# Placeholder for tool definitions
-# Tools will be implemented in subsequent tasks:
-# - Social media posting tools
-# - Content generation tools
-# - Analytics tools
-# - Engagement automation tools
+@mcp.tool()
+def billing_overview(tenant_id: str, plan_name: str) -> dict[str, Any]:
+    """Get current billing overview with plan, usage, and next billing date."""
+    try:
+        session_factory = _get_session_factory()
+        session = session_factory()
+        result = get_billing_overview(session, tenant_id, plan_name)
+        session.close()
+        logger.info(f"Billing overview retrieved for tenant: {tenant_id}")
+        return result
+    except Exception as e:
+        logger.error(f"Error retrieving billing overview: {str(e)}")
+        sentry_sdk.capture_exception(e)
+        return {"error": str(e), "tenant_id": tenant_id}
+
+
+@mcp.tool()
+def billing_usage_details(
+    tenant_id: str,
+    plan_name: str,
+    period_start: str = None,
+    period_end: str = None,
+) -> dict[str, Any]:
+    """Get detailed usage metrics with progress bars for a billing period."""
+    try:
+        from datetime import datetime
+
+        session_factory = _get_session_factory()
+        session = session_factory()
+
+        start = datetime.fromisoformat(period_start) if period_start else None
+        end = datetime.fromisoformat(period_end) if period_end else None
+
+        result = get_usage_details(session, tenant_id, plan_name, start, end)
+        session.close()
+        logger.info(f"Usage details retrieved for tenant: {tenant_id}")
+        return result
+    except Exception as e:
+        logger.error(f"Error retrieving usage details: {str(e)}")
+        sentry_sdk.capture_exception(e)
+        return {"error": str(e), "tenant_id": tenant_id}
+
+
+@mcp.tool()
+def billing_invoices(tenant_id: str, limit: int = 12) -> dict[str, Any]:
+    """Get list of past invoices for a tenant."""
+    try:
+        session_factory = _get_session_factory()
+        session = session_factory()
+        result = get_invoices(session, tenant_id, limit)
+        session.close()
+        logger.info(f"Invoices retrieved for tenant: {tenant_id}")
+        return result
+    except Exception as e:
+        logger.error(f"Error retrieving invoices: {str(e)}")
+        sentry_sdk.capture_exception(e)
+        return {"error": str(e), "tenant_id": tenant_id}
+
+
+@mcp.tool()
+def billing_payment_methods(tenant_id: str) -> dict[str, Any]:
+    """Get payment methods on file for a tenant (no sensitive details exposed)."""
+    try:
+        session_factory = _get_session_factory()
+        session = session_factory()
+        result = get_payment_methods(session, tenant_id)
+        session.close()
+        logger.info(f"Payment methods retrieved for tenant: {tenant_id}")
+        return result
+    except Exception as e:
+        logger.error(f"Error retrieving payment methods: {str(e)}")
+        sentry_sdk.capture_exception(e)
+        return {"error": str(e), "tenant_id": tenant_id}
 
 
 def main() -> None:
