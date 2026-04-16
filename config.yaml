@@ -10,6 +10,9 @@ groq_api_key: ${GROQ_API_KEY}
 # Database Configuration (required)
 database_url: ${DATABASE_URL}
 
+# Security Configuration (required)
+audit_secret_key: ${AUDIT_SECRET_KEY}
+
 # Logging Configuration
 log_level: ${LOG_LEVEL:-INFO}
 

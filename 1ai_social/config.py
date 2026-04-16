@@ -14,6 +14,7 @@ class Config:
         "byteplus_api_key",
         "groq_api_key",
         "database_url",
+        "audit_secret_key",
     ]
 
     def __init__(self, config_dict: dict):

@@ -9,6 +9,10 @@ from typing import Any, Optional
 from fastmcp import FastMCP
 from functools import wraps
 
+from . import security_headers
+
+from .rate_limiter import rate_limit, RateLimitExceeded, get_user_id_from_kwargs
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -19,6 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 mcp = FastMCP("1ai-social")
+security_middleware = security_headers.get_security_middleware()
 
 
 def _get_orchestrator():
@@ -87,10 +92,12 @@ def track_metrics(endpoint: str):
 def health_check() -> dict[str, str]:
     """Health check endpoint to verify server is running."""
     logger.info("Health check called")
-    return {"status": "ok"}
+    result = {"status": "ok"}
+    return security_middleware.apply_to_response(result)
 
 
 @mcp.tool()
+@rate_limit(limit_type="api", get_user_id=get_user_id_from_kwargs)
 @track_metrics("/generate_content")
 def generate_content(niche: str, count: int = 5) -> dict[str, Any]:
     """Generate viral hooks and content preview for a niche without posting.
@@ -100,22 +107,30 @@ def generate_content(niche: str, count: int = 5) -> dict[str, Any]:
         count: Number of hooks to generate (default 5).
     """
     try:
+        schema = PostCreateSchema(
+            niche=niche, count=count, platforms=["tiktok"], content_type="video"
+        )
+
         orch = _get_orchestrator()
         result = orch.generate_content_only(
             {
-                "niche": niche,
-                "count": count,
+                "niche": schema.niche,
+                "count": schema.count,
             }
         )
         metrics = _get_metrics()
-        metrics.record_content_generated(niche, "hook")
+        metrics.record_content_generated(schema.niche, "hook")
         return {"status": "success", "data": result}
+    except ValidationError as e:
+        logger.error(f"Validation failed: {e}")
+        return {"status": "error", "message": f"Validation error: {e.errors()}"}
     except Exception as e:
         logger.error(f"generate_content failed: {e}")
         return {"status": "error", "message": str(e)}
 
 
 @mcp.tool()
+@rate_limit(limit_type="api", get_user_id=get_user_id_from_kwargs)
 @track_metrics("/generate_and_post")
 def generate_and_post(
     niche: str,
@@ -151,6 +166,7 @@ def generate_and_post(
 
 
 @mcp.tool()
+@rate_limit(limit_type="api", get_user_id=get_user_id_from_kwargs)
 @track_metrics("/schedule_campaign")
 def schedule_campaign(
     niche: str,
@@ -203,11 +219,20 @@ def track_analytics(post_id: str) -> dict[str, Any]:
         post_id: The post identifier to look up.
     """
     try:
+        schema = AnalyticsQuerySchema(post_id=post_id)
+
         tracker = _get_analytics_tracker()
-        stats = tracker.get_stats(post_id)
+        stats = tracker.get_stats(schema.post_id)
         if stats:
-            return {"status": "success", "post_id": post_id, "metrics": stats}
-        return {"status": "not_found", "post_id": post_id, "message": "No data found"}
+            return {"status": "success", "post_id": schema.post_id, "metrics": stats}
+        return {
+            "status": "not_found",
+            "post_id": schema.post_id,
+            "message": "No data found",
+        }
+    except ValidationError as e:
+        logger.error(f"Validation failed: {e}")
+        return {"status": "error", "message": f"Validation error: {e.errors()}"}
     except Exception as e:
         logger.error(f"track_analytics failed: {e}")
         return {"status": "error", "message": str(e)}
@@ -267,13 +292,18 @@ def get_aggregate_stats(
         days: Number of days to look back (default 30).
     """
     try:
+        schema = AnalyticsQuerySchema(platform=platform, days=days)
+
         tracker = _get_analytics_tracker()
         plat = None
-        if platform:
+        if schema.platform:
             models = importlib.import_module("1ai_social.models")
-            plat = models.Platform(platform)
-        stats = tracker.aggregate_stats(platform=plat, days=days)
+            plat = models.Platform(schema.platform)
+        stats = tracker.aggregate_stats(platform=plat, days=schema.days)
         return {"status": "success", "data": stats}
+    except ValidationError as e:
+        logger.error(f"Validation failed: {e}")
+        return {"status": "error", "message": f"Validation error: {e.errors()}"}
     except Exception as e:
         logger.error(f"get_aggregate_stats failed: {e}")
         return {"status": "error", "message": str(e)}
@@ -303,3 +333,52 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+@mcp.tool()
+@track_metrics("/webhook")
+def process_webhook(
+    provider: str,
+    signature: str,
+    timestamp: str,
+    webhook_id: str,
+    body: str,
+) -> dict[str, Any]:
+    """Process incoming webhook with signature verification.
+
+    Args:
+        provider: Provider name (e.g., 'stripe', 'github', 'twitter')
+        signature: Signature from X-Webhook-Signature header
+        timestamp: Timestamp from X-Webhook-Timestamp header
+        webhook_id: Webhook ID from X-Webhook-ID header
+        body: Raw request body as string
+    """
+    try:
+        redis_client = _get_redis_client()
+        verifier = create_verifier(provider, redis_client=redis_client)
+
+        body_bytes = body.encode("utf-8")
+        verifier.verify_webhook(signature, timestamp, webhook_id, body_bytes)
+
+        logger.info(f"Webhook verified: provider={provider}, id={webhook_id}")
+
+        return {
+            "status": "success",
+            "message": "Webhook verified and processed",
+            "webhook_id": webhook_id,
+        }
+    except WebhookVerificationError as e:
+        logger.warning(f"Webhook verification failed: {e}")
+        return {
+            "status": "unauthorized",
+            "message": str(e),
+        }
+    except ValueError as e:
+        logger.error(f"Webhook configuration error: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+        }
+    except Exception as e:
+        logger.error(f"process_webhook failed: {e}")
+        return {"status": "error", "message": str(e)}
