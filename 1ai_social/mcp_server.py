@@ -403,10 +403,28 @@ def get_metrics() -> dict[str, Any]:
         return {"status": "error", "message": str(e)}
 
 
+@mcp.custom_route("/health", methods=["GET"])
+async def health_endpoint(request):
+    from starlette.responses import JSONResponse
+
+    return JSONResponse({"status": "ok", "service": "1ai-social"})
+
+
 def main() -> None:
     """Start the MCP server."""
-    logger.info("Starting 1ai-social MCP server")
-    mcp.run()
+    import os
+
+    transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
+    logger.info(f"Starting 1ai-social MCP server with transport: {transport}")
+
+    if transport in ("http", "sse", "streamable-http"):
+        host = os.getenv("HOST", "0.0.0.0")
+        port = int(os.getenv("PORT", "8200"))
+        logger.info(f"HTTP mode: listening on {host}:{port}")
+        mcp.run(transport="streamable-http", host=host, port=port)
+    else:
+        logger.info("STDIO mode: using standard input/output")
+        mcp.run()
 
 
 if __name__ == "__main__":
