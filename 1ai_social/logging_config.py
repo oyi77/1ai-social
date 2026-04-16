@@ -8,34 +8,50 @@ import uuid
 from datetime import datetime
 
 
-class CorrelationIdFilter(logging.Filter):
-    """Add correlation ID to log records for request tracing."""
+class ContextFilter(logging.Filter):
+    """Add context fields (request_id, user_id, tenant_id) to log records."""
 
     def __init__(self):
         super().__init__()
-        self.correlation_id = None
+        self.request_id = None
+        self.user_id = None
+        self.tenant_id = None
 
     def filter(self, record):
-        if not self.correlation_id:
-            self.correlation_id = str(uuid.uuid4())
-        record.correlation_id = self.correlation_id
+        if not self.request_id:
+            self.request_id = str(uuid.uuid4())
+        record.request_id = self.request_id
+        record.user_id = self.user_id
+        record.tenant_id = self.tenant_id
         return True
 
-    def set_correlation_id(self, correlation_id: str):
-        """Set correlation ID for tracing."""
-        self.correlation_id = correlation_id
+    def set_request_id(self, request_id: str):
+        """Set request ID for tracing."""
+        self.request_id = request_id
+
+    def set_user_id(self, user_id: Optional[str]):
+        """Set user ID for context."""
+        self.user_id = user_id
+
+    def set_tenant_id(self, tenant_id: Optional[str]):
+        """Set tenant ID for context."""
+        self.tenant_id = tenant_id
 
 
 class JsonFormatter(logging.Formatter):
-    """Format logs as JSON for structured logging."""
+    """Format logs as JSON for structured logging with context fields."""
 
     def format(self, record):
         log_data = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.utcnow().isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
+            "module": record.module,
+            "function": record.funcName,
             "message": record.getMessage(),
-            "correlation_id": getattr(record, "correlation_id", None),
+            "request_id": getattr(record, "request_id", None),
+            "user_id": getattr(record, "user_id", None),
+            "tenant_id": getattr(record, "tenant_id", None),
         }
 
         if record.exc_info:
@@ -58,12 +74,12 @@ class ConsoleFormatter(logging.Formatter):
 
     def format(self, record):
         level_color = self.COLORS.get(record.levelname, "")
-        correlation_id = getattr(record, "correlation_id", None)
-        correlation_str = f" [{correlation_id}]" if correlation_id else ""
+        request_id = getattr(record, "request_id", None)
+        request_str = f" [{request_id}]" if request_id else ""
 
         formatted = (
             f"{level_color}[{record.levelname}]{self.RESET} "
-            f"{record.name}{correlation_str}: {record.getMessage()}"
+            f"{record.name}{request_str}: {record.getMessage()}"
         )
 
         if record.exc_info:
@@ -77,7 +93,8 @@ def setup_logging(
     level: int = logging.INFO,
     enable_console: bool = True,
     enable_file: bool = True,
-) -> CorrelationIdFilter:
+    env: str = "production",
+) -> ContextFilter:
     """Configure structured logging with console and file handlers.
 
     Args:
@@ -85,14 +102,15 @@ def setup_logging(
         level: Logging level (DEBUG, INFO, WARNING, ERROR)
         enable_console: Enable console output (human-readable)
         enable_file: Enable file output (JSON format)
+        env: Environment (development, production). Defaults to production
 
     Returns:
-        CorrelationIdFilter instance for setting correlation IDs
+        ContextFilter instance for setting request_id, user_id, tenant_id
 
     Example:
-        >>> correlation_filter = setup_logging()
+        >>> context_filter = setup_logging()
         >>> logger = logging.getLogger(__name__)
-        >>> correlation_filter.set_correlation_id("request-123")
+        >>> context_filter.set_request_id("req-123")
     """
     if log_dir is None:
         log_dir = Path(__file__).parent.parent / "logs"
@@ -101,39 +119,42 @@ def setup_logging(
 
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create correlation ID filter
-    correlation_filter = CorrelationIdFilter()
+    context_filter = ContextFilter()
 
-    # Configure root logger
     root_logger = logging.getLogger()
-    root_logger.setLevel(level)
+
+    if env == "development":
+        root_logger.setLevel(logging.DEBUG)
+    else:
+        root_logger.setLevel(level)
 
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
-    root_logger.addFilter(correlation_filter)
+    root_logger.addFilter(context_filter)
 
     if enable_console:
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(level)
+        console_handler.setLevel(logging.DEBUG if env == "development" else level)
         console_handler.setFormatter(ConsoleFormatter())
-        console_handler.addFilter(correlation_filter)
+        console_handler.addFilter(context_filter)
         root_logger.addHandler(console_handler)
 
-    # File handler (JSON format with rotation)
     if enable_file:
         log_file = log_dir / "app.log"
-        file_handler = logging.handlers.RotatingFileHandler(
+        file_handler = logging.handlers.TimedRotatingFileHandler(
             log_file,
-            maxBytes=10 * 1024 * 1024,
-            backupCount=5,
+            when="midnight",
+            interval=1,
+            backupCount=30,
+            utc=True,
         )
         file_handler.setLevel(level)
         file_handler.setFormatter(JsonFormatter())
-        file_handler.addFilter(correlation_filter)
+        file_handler.addFilter(context_filter)
         root_logger.addHandler(file_handler)
 
-    return correlation_filter
+    return context_filter
 
 
 def get_logger(name: str) -> logging.Logger:

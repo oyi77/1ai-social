@@ -3,9 +3,11 @@
 import importlib
 import logging
 import sys
+import time
 from typing import Any, Optional
 
 from fastmcp import FastMCP
+from functools import wraps
 
 logging.basicConfig(
     level=logging.INFO,
@@ -44,6 +46,43 @@ def _get_queue_manager():
     return mod.QueueManager()
 
 
+def _get_metrics():
+    mod = importlib.import_module("1ai_social.metrics")
+    return mod.metrics
+
+
+def track_metrics(endpoint: str):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            metrics = _get_metrics()
+
+            try:
+                result = func(*args, **kwargs)
+                duration = time.time() - start_time
+
+                status = (
+                    result.get("status", "unknown")
+                    if isinstance(result, dict)
+                    else "success"
+                )
+                metrics.record_http_request(
+                    "POST", endpoint, 200 if status == "success" else 500, duration
+                )
+
+                return result
+            except Exception as e:
+                duration = time.time() - start_time
+                metrics.record_http_request("POST", endpoint, 500, duration)
+                metrics.record_http_error("POST", endpoint, type(e).__name__)
+                raise
+
+        return wrapper
+
+    return decorator
+
+
 @mcp.tool()
 def health_check() -> dict[str, str]:
     """Health check endpoint to verify server is running."""
@@ -52,6 +91,7 @@ def health_check() -> dict[str, str]:
 
 
 @mcp.tool()
+@track_metrics("/generate_content")
 def generate_content(niche: str, count: int = 5) -> dict[str, Any]:
     """Generate viral hooks and content preview for a niche without posting.
 
@@ -67,6 +107,8 @@ def generate_content(niche: str, count: int = 5) -> dict[str, Any]:
                 "count": count,
             }
         )
+        metrics = _get_metrics()
+        metrics.record_content_generated(niche, "hook")
         return {"status": "success", "data": result}
     except Exception as e:
         logger.error(f"generate_content failed: {e}")
@@ -74,6 +116,7 @@ def generate_content(niche: str, count: int = 5) -> dict[str, Any]:
 
 
 @mcp.tool()
+@track_metrics("/generate_and_post")
 def generate_and_post(
     niche: str,
     platforms: list[str] | None = None,
@@ -98,6 +141,9 @@ def generate_and_post(
                 "count": count,
             }
         )
+        metrics = _get_metrics()
+        for platform in platforms or ["tiktok"]:
+            metrics.record_post_published(platform, "success")
         return {"status": "success", "data": result}
     except Exception as e:
         logger.error(f"generate_and_post failed: {e}")
@@ -105,6 +151,7 @@ def generate_and_post(
 
 
 @mcp.tool()
+@track_metrics("/schedule_campaign")
 def schedule_campaign(
     niche: str,
     platforms: list[str] | None = None,
@@ -186,14 +233,22 @@ def get_performance_report(report_type: str = "daily") -> dict[str, Any]:
 
 
 @mcp.tool()
+@track_metrics("/get_queue_status")
 def get_queue_status() -> dict[str, Any]:
     """Get the current post queue status."""
     try:
         qm = _get_queue_manager()
+        queue_size = qm.size()
+        failed_count = len(qm.get_failed())
+
+        metrics = _get_metrics()
+        metrics.set_queue_size(queue_size)
+        metrics.set_queue_failed(failed_count)
+
         return {
             "status": "success",
-            "queue_size": qm.size(),
-            "failed_count": len(qm.get_failed()),
+            "queue_size": queue_size,
+            "failed_count": failed_count,
         }
     except Exception as e:
         logger.error(f"get_queue_status failed: {e}")
@@ -221,6 +276,22 @@ def get_aggregate_stats(
         return {"status": "success", "data": stats}
     except Exception as e:
         logger.error(f"get_aggregate_stats failed: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+def get_metrics() -> dict[str, Any]:
+    """Get Prometheus metrics in text format."""
+    try:
+        metrics = _get_metrics()
+        metrics_output, content_type = metrics.get_metrics()
+        return {
+            "status": "success",
+            "metrics": metrics_output.decode("utf-8"),
+            "content_type": content_type,
+        }
+    except Exception as e:
+        logger.error(f"get_metrics failed: {e}")
         return {"status": "error", "message": str(e)}
 
 

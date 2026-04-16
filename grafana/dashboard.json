@@ -1,0 +1,210 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "1ai-social-metrics",
+    "title": "1ai-Social Monitoring Dashboard",
+    "tags": ["social-media", "automation", "prometheus"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 0,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "type": "graph",
+        "title": "HTTP Request Rate",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "{{method}} {{endpoint}} - {{status}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "reqps", "label": "Requests/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 2,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "type": "graph",
+        "title": "HTTP Request Duration (p95)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{method}} {{endpoint}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Duration"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 3,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "type": "graph",
+        "title": "Posts Published by Platform",
+        "targets": [
+          {
+            "expr": "rate(posts_published_total[5m])",
+            "legendFormat": "{{platform}} - {{status}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Posts/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 4,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "type": "graph",
+        "title": "Platform API Calls",
+        "targets": [
+          {
+            "expr": "rate(api_calls_total[5m])",
+            "legendFormat": "{{platform}} - {{endpoint}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Calls/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 5,
+        "gridPos": {"h": 6, "w": 6, "x": 0, "y": 16},
+        "type": "singlestat",
+        "title": "Active Users",
+        "targets": [
+          {
+            "expr": "active_users_gauge",
+            "refId": "A"
+          }
+        ],
+        "format": "short",
+        "valueName": "current"
+      },
+      {
+        "id": 6,
+        "gridPos": {"h": 6, "w": 6, "x": 6, "y": 16},
+        "type": "singlestat",
+        "title": "Queue Size",
+        "targets": [
+          {
+            "expr": "queue_size_gauge",
+            "refId": "A"
+          }
+        ],
+        "format": "short",
+        "valueName": "current"
+      },
+      {
+        "id": 7,
+        "gridPos": {"h": 6, "w": 6, "x": 12, "y": 16},
+        "type": "singlestat",
+        "title": "Failed Queue Items",
+        "targets": [
+          {
+            "expr": "queue_failed_gauge",
+            "refId": "A"
+          }
+        ],
+        "format": "short",
+        "valueName": "current",
+        "thresholds": "1,5",
+        "colors": ["#299c46", "#e5ac0e", "#bf1b00"]
+      },
+      {
+        "id": 8,
+        "gridPos": {"h": 6, "w": 6, "x": 18, "y": 16},
+        "type": "singlestat",
+        "title": "Error Rate",
+        "targets": [
+          {
+            "expr": "rate(http_request_errors_total[5m])",
+            "refId": "A"
+          }
+        ],
+        "format": "short",
+        "valueName": "current",
+        "thresholds": "0.1,1",
+        "colors": ["#299c46", "#e5ac0e", "#bf1b00"]
+      },
+      {
+        "id": 9,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 22},
+        "type": "graph",
+        "title": "Platform Errors",
+        "targets": [
+          {
+            "expr": "rate(platform_errors_total[5m])",
+            "legendFormat": "{{platform}} - {{error_type}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Errors/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 10,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 22},
+        "type": "graph",
+        "title": "Content Generation Rate",
+        "targets": [
+          {
+            "expr": "rate(content_generated_total[5m])",
+            "legendFormat": "{{niche}} - {{content_type}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Items/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 11,
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 30},
+        "type": "graph",
+        "title": "Video Render Duration (p95)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(video_render_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{template}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "label": "Duration"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 12,
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 30},
+        "type": "graph",
+        "title": "Post Engagement",
+        "targets": [
+          {
+            "expr": "rate(post_engagement_total[5m])",
+            "legendFormat": "{{platform}} - {{engagement_type}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Engagements/sec"},
+          {"format": "short"}
+        ]
+      }
+    ]
+  }
+}
