@@ -14,6 +14,12 @@ from sqlalchemy.orm import sessionmaker, Session
 from . import security_headers
 from .rate_limiter import rate_limit, RateLimitExceeded, get_user_id_from_kwargs
 from .tenant_context import get_tenant_middleware, require_tenant_context
+from .webhooks import WebhookVerificationError, create_verifier
+from .billing.lemonsqueezy import (
+    LemonSqueezyWebhookVerifier,
+    LemonSqueezyWebhookHandler,
+    get_webhook_secret as get_lemonsqueezy_secret,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,6 +36,7 @@ security_middleware = security_headers.get_security_middleware()
 _db_engine = None
 _db_session_factory = None
 _tenant_middleware = None
+_redis_client = None
 
 
 def _get_db_engine():
@@ -64,6 +71,18 @@ def _get_tenant_middleware():
     if _tenant_middleware is None:
         _tenant_middleware = get_tenant_middleware(get_db_session)
     return _tenant_middleware
+
+
+def _get_redis_client():
+    """Get or create Redis client."""
+    global _redis_client
+    if _redis_client is None:
+        import os
+        import redis
+
+        redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        _redis_client = redis.from_url(redis_url, decode_responses=False)
+    return _redis_client
 
 
 def _get_orchestrator():
@@ -421,4 +440,57 @@ def process_webhook(
         }
     except Exception as e:
         logger.error(f"process_webhook failed: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+@track_metrics("/webhooks/lemonsqueezy")
+def lemonsqueezy_webhook(signature: str, body: str) -> dict[str, Any]:
+    """Process LemonSqueezy webhook events.
+
+    Args:
+        signature: Signature from X-Signature header
+        body: Raw request body as JSON string
+    """
+    try:
+        import json
+
+        secret = get_lemonsqueezy_secret()
+        verifier = LemonSqueezyWebhookVerifier(secret)
+
+        body_bytes = body.encode("utf-8")
+        if not verifier.verify_signature(signature, body_bytes):
+            logger.warning("LemonSqueezy webhook signature verification failed")
+            return {
+                "status": "unauthorized",
+                "message": "Invalid signature",
+            }
+
+        payload = json.loads(body)
+
+        db_session = get_db_session()
+        redis_client = _get_redis_client()
+        handler = LemonSqueezyWebhookHandler(db_session, redis_client)
+
+        result = handler.handle_webhook(payload)
+
+        db_session.close()
+
+        logger.info(f"LemonSqueezy webhook processed: {result}")
+        return result
+
+    except ValueError as e:
+        logger.error(f"LemonSqueezy webhook configuration error: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+        }
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON payload: {e}")
+        return {
+            "status": "error",
+            "message": "Invalid JSON payload",
+        }
+    except Exception as e:
+        logger.error(f"lemonsqueezy_webhook failed: {e}", exc_info=True)
         return {"status": "error", "message": str(e)}
