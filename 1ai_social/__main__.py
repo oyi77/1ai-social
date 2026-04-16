@@ -3,5 +3,6 @@
 import importlib
 
 if __name__ == "__main__":
-    mcp_server = importlib.import_module("1ai_social.mcp_server")
+    # Package name starts with digit, so use relative import via parent
+    mcp_server = importlib.import_module(".mcp_server", __package__)
     mcp_server.main()
