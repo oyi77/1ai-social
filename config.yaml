@@ -1,0 +1,36 @@
+# 1ai-social Configuration
+# Environment variables are loaded from .env file or system environment
+
+# API Keys (required - set via environment variables)
+postbridge_api_key: ${POSTBRIDGE_API_KEY}
+nvidia_api_key: ${NVIDIA_API_KEY}
+byteplus_api_key: ${BYTEPLUS_API_KEY}
+groq_api_key: ${GROQ_API_KEY}
+
+# Database Configuration (required)
+database_url: ${DATABASE_URL}
+
+# Logging Configuration
+log_level: ${LOG_LEVEL:-INFO}
+
+# Video Generation Settings
+video_generation:
+  provider: byteplus  # byteplus, seedance, grok
+  timeout_seconds: 300
+  max_retries: 3
+
+# Image Generation Settings
+image_generation:
+  provider: nvidia  # nvidia, gemini
+  timeout_seconds: 60
+  max_retries: 2
+
+# PostBridge Settings
+postbridge:
+  base_url: https://api.postbridge.io
+  timeout_seconds: 30
+
+# Application Settings
+app:
+  debug: ${DEBUG:-false}
+  environment: ${ENVIRONMENT:-production}
