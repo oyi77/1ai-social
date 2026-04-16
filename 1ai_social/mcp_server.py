@@ -8,10 +8,12 @@ from typing import Any, Optional
 
 from fastmcp import FastMCP
 from functools import wraps
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
 
 from . import security_headers
-
 from .rate_limiter import rate_limit, RateLimitExceeded, get_user_id_from_kwargs
+from .tenant_context import get_tenant_middleware, require_tenant_context
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,6 +26,44 @@ logger = logging.getLogger(__name__)
 
 mcp = FastMCP("1ai-social")
 security_middleware = security_headers.get_security_middleware()
+
+_db_engine = None
+_db_session_factory = None
+_tenant_middleware = None
+
+
+def _get_db_engine():
+    """Get or create database engine."""
+    global _db_engine
+    if _db_engine is None:
+        import os
+
+        db_url = os.getenv("DATABASE_URL", "postgresql://localhost/1ai_social")
+        _db_engine = create_engine(db_url, pool_pre_ping=True)
+    return _db_engine
+
+
+def _get_db_session_factory():
+    """Get or create database session factory."""
+    global _db_session_factory
+    if _db_session_factory is None:
+        engine = _get_db_engine()
+        _db_session_factory = sessionmaker(bind=engine)
+    return _db_session_factory
+
+
+def get_db_session() -> Session:
+    """Create a new database session."""
+    factory = _get_db_session_factory()
+    return factory()
+
+
+def _get_tenant_middleware():
+    """Get or create tenant middleware instance."""
+    global _tenant_middleware
+    if _tenant_middleware is None:
+        _tenant_middleware = get_tenant_middleware(get_db_session)
+    return _tenant_middleware
 
 
 def _get_orchestrator():
