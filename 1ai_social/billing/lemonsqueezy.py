@@ -327,25 +327,34 @@ class LemonSqueezyWebhookHandler:
     def _map_variant_to_plan(self, variant_id: str) -> str:
         """
         Map LemonSqueezy variant ID to plan name.
-
-        TODO: Configure this mapping based on your LemonSqueezy product setup.
         """
-        # Default mapping - should be configured via environment variables
         variant_map = {
             os.getenv("LEMONSQUEEZY_VARIANT_STARTER"): "starter",
             os.getenv("LEMONSQUEEZY_VARIANT_PRO"): "pro",
             os.getenv("LEMONSQUEEZY_VARIANT_ENTERPRISE"): "enterprise",
         }
-        return variant_map.get(variant_id, "starter")
+        plan = variant_map.get(variant_id)
+        if not plan:
+            logger.warning(f"Unknown variant_id {variant_id}, defaulting to starter")
+            return "starter"
+        return plan
 
     def _get_tenant_id_from_customer(self, customer_id: str) -> str:
         """
         Get tenant_id from customer_id.
-
-        TODO: Implement customer-to-tenant mapping.
-        For now, use customer_id as tenant_id.
         """
-        # This should query your customer/tenant mapping
+        subscription = (
+            self.db.query(Subscription)
+            .filter_by(lemonsqueezy_customer_id=customer_id)
+            .first()
+        )
+
+        if subscription:
+            return subscription.tenant_id
+
+        logger.warning(
+            f"No tenant mapping found for customer_id {customer_id}, using customer_id as tenant_id"
+        )
         return customer_id
 
     def _parse_timestamp(self, timestamp_str: Optional[str]) -> Optional[datetime]:

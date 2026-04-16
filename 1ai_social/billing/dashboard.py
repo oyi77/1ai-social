@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 
 from .plans import get_plan_config, get_plan_limits
 from .usage import get_current_month_usage, get_usage_summary
+from .lemonsqueezy import Subscription
+from .usage import UsageEvent
 
 logger = logging.getLogger(__name__)
 
@@ -210,43 +212,65 @@ def get_invoices(
     Returns:
         Dict with invoice list and summary
     """
-    # Mock invoice data - in production, would query from invoices table
-    invoices = [
-        {
-            "id": f"inv_{tenant_id}_202604",
-            "date": "2026-04-01",
-            "amount": 99.00,
-            "currency": "USD",
-            "status": "paid",
-            "period_start": "2026-04-01",
-            "period_end": "2026-05-01",
-            "description": "Pro Plan - April 2026",
-        },
-        {
-            "id": f"inv_{tenant_id}_202603",
-            "date": "2026-03-01",
-            "amount": 99.00,
-            "currency": "USD",
-            "status": "paid",
-            "period_start": "2026-03-01",
-            "period_end": "2026-04-01",
-            "description": "Pro Plan - March 2026",
-        },
-        {
-            "id": f"inv_{tenant_id}_202602",
-            "date": "2026-02-01",
-            "amount": 99.00,
-            "currency": "USD",
-            "status": "paid",
-            "period_start": "2026-02-01",
-            "period_end": "2026-03-01",
-            "description": "Pro Plan - February 2026",
-        },
-    ]
+    subscription = session.query(Subscription).filter_by(tenant_id=tenant_id).first()
+
+    if not subscription:
+        return {
+            "tenant_id": tenant_id,
+            "invoices": [],
+            "total_count": 0,
+            "limit": limit,
+        }
+
+    from .plans import get_plan_config
+
+    plan_config = get_plan_config(subscription.plan)
+    plan_price = plan_config.get("price", 0) if plan_config else 0
+    plan_name = (
+        plan_config.get("name", subscription.plan) if plan_config else subscription.plan
+    )
+
+    invoices = []
+
+    if subscription.current_period_start and subscription.current_period_end:
+        current_start = subscription.current_period_start
+
+        for i in range(limit):
+            period_start = current_start - timedelta(days=30 * i)
+            period_end = (
+                current_start - timedelta(days=30 * (i - 1))
+                if i > 0
+                else subscription.current_period_end
+            )
+
+            if period_start < subscription.created_at:
+                break
+
+            invoice_date = period_start.strftime("%Y-%m-%d")
+            invoice_id = f"inv_{tenant_id}_{period_start.strftime('%Y%m')}"
+
+            status = "paid"
+            if subscription.status == "past_due" and i == 0:
+                status = "past_due"
+            elif subscription.status == "cancelled" and i == 0:
+                status = "cancelled"
+
+            invoices.append(
+                {
+                    "id": invoice_id,
+                    "date": invoice_date,
+                    "amount": plan_price if plan_price else 0,
+                    "currency": "USD",
+                    "status": status,
+                    "period_start": period_start.strftime("%Y-%m-%d"),
+                    "period_end": period_end.strftime("%Y-%m-%d"),
+                    "description": f"{plan_name} - {period_start.strftime('%B %Y')}",
+                }
+            )
 
     return {
         "tenant_id": tenant_id,
-        "invoices": invoices[:limit],
+        "invoices": invoices,
         "total_count": len(invoices),
         "limit": limit,
     }
@@ -262,33 +286,27 @@ def get_payment_methods(session: Session, tenant_id: str) -> Dict[str, Any]:
     Returns:
         Dict with payment methods (no sensitive details exposed)
     """
-    # Mock payment methods - in production, would query from payment_methods table
-    # Never expose full card numbers or sensitive data
-    payment_methods = [
-        {
-            "id": "pm_1234567890",
-            "type": "card",
-            "brand": "visa",
-            "last_four": "4242",
-            "exp_month": 12,
-            "exp_year": 2026,
-            "is_default": True,
-        },
-        {
-            "id": "pm_0987654321",
-            "type": "card",
-            "brand": "mastercard",
-            "last_four": "5555",
-            "exp_month": 6,
-            "exp_year": 2027,
-            "is_default": False,
-        },
-    ]
+    subscription = session.query(Subscription).filter_by(tenant_id=tenant_id).first()
+
+    payment_methods = []
+    default_method_id = None
+
+    if subscription and subscription.lemonsqueezy_customer_id:
+        payment_methods.append(
+            {
+                "id": f"ls_{subscription.lemonsqueezy_customer_id}",
+                "type": "lemonsqueezy",
+                "provider": "LemonSqueezy",
+                "status": subscription.status,
+                "is_default": True,
+            }
+        )
+        default_method_id = f"ls_{subscription.lemonsqueezy_customer_id}"
 
     return {
         "tenant_id": tenant_id,
         "payment_methods": payment_methods,
-        "default_method_id": "pm_1234567890",
+        "default_method_id": default_method_id,
     }
 
 

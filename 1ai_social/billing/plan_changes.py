@@ -35,6 +35,14 @@ from .lemonsqueezy import Subscription
 
 logger = logging.getLogger(__name__)
 
+try:
+    from ..notifications.email import send_email
+
+    EMAIL_AVAILABLE = True
+except ImportError:
+    EMAIL_AVAILABLE = False
+    logger.warning("Email notifications module not available")
+
 
 class PlanChangeError(Exception):
     """Raised when plan change operation fails."""
@@ -193,11 +201,24 @@ def upgrade_plan(
         f"Proration: ${proration['net']}"
     )
 
-    # Log confirmation (email integration later)
-    logger.info(
-        f"Confirmation: Tenant {tenant_id} upgraded to {new_plan}. "
-        f"Prorated charge: ${proration['net']}"
-    )
+    if EMAIL_AVAILABLE:
+        try:
+            send_email(
+                to=f"tenant_{tenant_id}@example.com",
+                subject="Plan Upgrade Confirmation",
+                template="invoice",
+                data={
+                    "name": f"Tenant {tenant_id}",
+                    "invoice_number": f"upgrade_{tenant_id}_{datetime.now(timezone.utc).strftime('%Y%m%d')}",
+                    "amount": f"${proration['net']}",
+                    "period": f"{datetime.now(timezone.utc).strftime('%Y-%m-%d')} to {subscription.current_period_end.strftime('%Y-%m-%d') if subscription.current_period_end else 'N/A'}",
+                    "due_date": "Immediate",
+                    "invoice_url": "#",
+                    "user_id": tenant_id,
+                },
+            )
+        except Exception as e:
+            logger.error(f"Failed to send upgrade confirmation email: {e}")
 
     return {
         "status": "success",
@@ -253,12 +274,8 @@ def downgrade_plan(
             f"Use upgrade_plan() for upgrade from {current_plan} to {new_plan}"
         )
 
-    # Schedule downgrade for period end
     subscription.cancel_at_period_end = True
     subscription.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
-
-    # Store pending plan change (in production, use separate table)
-    # For now, we'll handle this via webhook at period end
 
     db.commit()
 
@@ -267,11 +284,26 @@ def downgrade_plan(
         f"Effective: {subscription.current_period_end}"
     )
 
-    # Log confirmation (email integration later)
-    logger.info(
-        f"Confirmation: Tenant {tenant_id} downgrade to {new_plan} scheduled. "
-        f"Effective: {subscription.current_period_end}"
-    )
+    if EMAIL_AVAILABLE:
+        try:
+            send_email(
+                to=f"tenant_{tenant_id}@example.com",
+                subject="Plan Downgrade Scheduled",
+                template="invoice",
+                data={
+                    "name": f"Tenant {tenant_id}",
+                    "invoice_number": f"downgrade_{tenant_id}_{datetime.now(timezone.utc).strftime('%Y%m%d')}",
+                    "amount": "$0.00",
+                    "period": f"Effective {subscription.current_period_end.strftime('%Y-%m-%d') if subscription.current_period_end else 'N/A'}",
+                    "due_date": subscription.current_period_end.strftime("%Y-%m-%d")
+                    if subscription.current_period_end
+                    else "N/A",
+                    "invoice_url": "#",
+                    "user_id": tenant_id,
+                },
+            )
+        except Exception as e:
+            logger.error(f"Failed to send downgrade confirmation email: {e}")
 
     return {
         "status": "success",

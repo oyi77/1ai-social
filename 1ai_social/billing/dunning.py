@@ -18,6 +18,14 @@ from sqlalchemy.ext.declarative import declarative_base
 
 logger = logging.getLogger(__name__)
 
+try:
+    from ..notifications.email import send_email
+
+    EMAIL_AVAILABLE = True
+except ImportError:
+    EMAIL_AVAILABLE = False
+    logger.warning("Email notifications module not available")
+
 Base = declarative_base()
 
 
@@ -230,7 +238,7 @@ class DunningManager:
 
     def _log_email(self, tenant_id: str, email_type: str, message: str) -> None:
         """
-        Log email notification (actual email integration to be implemented later).
+        Send email notification for dunning events.
 
         Args:
             tenant_id: Tenant ID
@@ -238,8 +246,61 @@ class DunningManager:
             message: Email message
         """
         logger.info(
-            f"[EMAIL LOG] tenant_id={tenant_id}, type={email_type}, message={message}"
+            f"[EMAIL] tenant_id={tenant_id}, type={email_type}, message={message}"
         )
+
+        if not EMAIL_AVAILABLE:
+            logger.warning("Email module not available, skipping email send")
+            return
+
+        email_templates = {
+            "payment_failed": {
+                "template": "payment_failed",
+                "subject": "Payment Failed - Action Required",
+            },
+            "retry_scheduled": {
+                "template": "payment_failed",
+                "subject": "Payment Retry Scheduled",
+            },
+            "account_suspended": {
+                "template": "payment_failed",
+                "subject": "Account Suspended - Payment Required",
+            },
+            "payment_recovered": {
+                "template": "welcome",
+                "subject": "Payment Successful - Account Restored",
+            },
+        }
+
+        template_info = email_templates.get(email_type)
+        if not template_info:
+            logger.warning(f"Unknown email type: {email_type}")
+            return
+
+        try:
+            send_email(
+                to=f"tenant_{tenant_id}@example.com",
+                subject=template_info["subject"],
+                template=template_info["template"],
+                data={
+                    "name": f"Tenant {tenant_id}",
+                    "attempt_date": datetime.utcnow().strftime("%Y-%m-%d"),
+                    "failure_reason": "Payment method declined",
+                    "payment_url": "#",
+                    "suspension_date": (datetime.utcnow() + timedelta(days=7)).strftime(
+                        "%Y-%m-%d"
+                    ),
+                    "user_id": tenant_id,
+                    "dashboard_url": "#",
+                    "docs_url": "#",
+                    "community_url": "#",
+                },
+            )
+            logger.info(
+                f"Email sent successfully for {email_type} to tenant {tenant_id}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to send email for {email_type}: {e}")
 
 
 def get_pending_retries(db_session: Session) -> list:

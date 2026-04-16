@@ -7,7 +7,7 @@ configuration.
 
 Supported Providers:
 - lemonsqueezy: LemonSqueezy payment processor (default)
-- stripe: Stripe payment processor (stub for future implementation)
+- stripe: Stripe payment processor
 
 Environment Variables:
 - BILLING_PROVIDER: Provider to use ('lemonsqueezy' or 'stripe', default: 'lemonsqueezy')
@@ -17,6 +17,24 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
+
+try:
+    import stripe
+
+    STRIPE_AVAILABLE = True
+except ImportError:
+    STRIPE_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning(
+        "stripe library not installed - Stripe provider will not be available"
+    )
+
+try:
+    import httpx
+
+    HTTPX_AVAILABLE = True
+except ImportError:
+    HTTPX_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -100,8 +118,9 @@ class LemonSqueezyProvider(BillingProvider):
     """LemonSqueezy billing provider implementation."""
 
     def __init__(self):
-        """Initialize LemonSqueezy provider."""
         self.verifier = None
+        self.api_key = os.getenv("LEMONSQUEEZY_API_KEY")
+        self.store_id = os.getenv("LEMONSQUEEZY_STORE_ID")
         secret = os.getenv("LEMONSQUEEZY_WEBHOOK_SECRET")
         if secret:
             try:
@@ -114,47 +133,286 @@ class LemonSqueezyProvider(BillingProvider):
     def create_subscription(
         self, tenant_id: str, plan: str, customer_email: str
     ) -> Dict[str, Any]:
-        """
-        Create subscription via LemonSqueezy.
+        if not self.api_key or not self.store_id:
+            logger.error("LemonSqueezy API key or store ID not configured")
+            return {
+                "status": "error",
+                "provider": "lemonsqueezy",
+                "message": "API credentials not configured",
+            }
 
-        Note: This is a placeholder. Actual implementation would call
-        LemonSqueezy API to create a subscription.
-        """
-        logger.info(
-            f"LemonSqueezy: Creating subscription for tenant {tenant_id}, plan {plan}"
-        )
-        return {
-            "status": "pending",
-            "provider": "lemonsqueezy",
-            "tenant_id": tenant_id,
-            "plan": plan,
-        }
+        variant_id = self._get_variant_id_for_plan(plan)
+        if not variant_id:
+            logger.error(f"No variant ID configured for plan: {plan}")
+            return {
+                "status": "error",
+                "provider": "lemonsqueezy",
+                "message": f"Plan {plan} not configured",
+            }
+
+        try:
+            if HTTPX_AVAILABLE:
+                import httpx
+
+                response = httpx.post(
+                    "https://api.lemonsqueezy.com/v1/subscriptions",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    },
+                    json={
+                        "data": {
+                            "type": "subscriptions",
+                            "attributes": {
+                                "store_id": self.store_id,
+                                "variant_id": variant_id,
+                                "customer_email": customer_email,
+                                "custom_data": {"tenant_id": tenant_id},
+                            },
+                        }
+                    },
+                    timeout=30.0,
+                )
+                response.raise_for_status()
+                data = response.json()
+                logger.info(f"LemonSqueezy subscription created for tenant {tenant_id}")
+                return {
+                    "status": "success",
+                    "provider": "lemonsqueezy",
+                    "tenant_id": tenant_id,
+                    "plan": plan,
+                    "subscription_id": data.get("data", {}).get("id"),
+                }
+            else:
+                from urllib.request import Request, urlopen
+                import json
+
+                req = Request(
+                    "https://api.lemonsqueezy.com/v1/subscriptions",
+                    data=json.dumps(
+                        {
+                            "data": {
+                                "type": "subscriptions",
+                                "attributes": {
+                                    "store_id": self.store_id,
+                                    "variant_id": variant_id,
+                                    "customer_email": customer_email,
+                                    "custom_data": {"tenant_id": tenant_id},
+                                },
+                            }
+                        }
+                    ).encode(),
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    },
+                    method="POST",
+                )
+                with urlopen(req, timeout=30) as response:
+                    data = json.loads(response.read().decode())
+                    logger.info(
+                        f"LemonSqueezy subscription created for tenant {tenant_id}"
+                    )
+                    return {
+                        "status": "success",
+                        "provider": "lemonsqueezy",
+                        "tenant_id": tenant_id,
+                        "plan": plan,
+                        "subscription_id": data.get("data", {}).get("id"),
+                    }
+        except Exception as e:
+            logger.error(f"LemonSqueezy API error: {e}")
+            return {
+                "status": "error",
+                "provider": "lemonsqueezy",
+                "message": str(e),
+            }
 
     def cancel_subscription(self, tenant_id: str) -> Dict[str, Any]:
-        """Cancel subscription via LemonSqueezy."""
-        logger.info(f"LemonSqueezy: Cancelling subscription for tenant {tenant_id}")
-        return {
-            "status": "cancelled",
-            "provider": "lemonsqueezy",
-            "tenant_id": tenant_id,
-        }
+        from .lemonsqueezy import Subscription
+        from sqlalchemy.orm import Session
+
+        try:
+            from .database import get_session
+
+            session = get_session()
+        except:
+            logger.error("Cannot get database session")
+            return {"status": "error", "message": "Database unavailable"}
+
+        subscription = (
+            session.query(Subscription).filter_by(tenant_id=tenant_id).first()
+        )
+        if not subscription or not subscription.lemonsqueezy_subscription_id:
+            logger.warning(f"No subscription found for tenant {tenant_id}")
+            return {"status": "error", "message": "Subscription not found"}
+
+        if not self.api_key:
+            logger.error("LemonSqueezy API key not configured")
+            return {"status": "error", "message": "API key not configured"}
+
+        try:
+            if HTTPX_AVAILABLE:
+                import httpx
+
+                response = httpx.delete(
+                    f"https://api.lemonsqueezy.com/v1/subscriptions/{subscription.lemonsqueezy_subscription_id}",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Accept": "application/json",
+                    },
+                    timeout=30.0,
+                )
+                response.raise_for_status()
+            else:
+                from urllib.request import Request, urlopen
+
+                req = Request(
+                    f"https://api.lemonsqueezy.com/v1/subscriptions/{subscription.lemonsqueezy_subscription_id}",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Accept": "application/json",
+                    },
+                    method="DELETE",
+                )
+                urlopen(req, timeout=30)
+
+            logger.info(f"LemonSqueezy subscription cancelled for tenant {tenant_id}")
+            return {
+                "status": "cancelled",
+                "provider": "lemonsqueezy",
+                "tenant_id": tenant_id,
+            }
+        except Exception as e:
+            logger.error(f"LemonSqueezy cancel error: {e}")
+            return {"status": "error", "message": str(e)}
 
     def update_subscription(self, tenant_id: str, new_plan: str) -> Dict[str, Any]:
-        """Update subscription plan via LemonSqueezy."""
-        logger.info(
-            f"LemonSqueezy: Updating subscription for tenant {tenant_id} to plan {new_plan}"
+        from .lemonsqueezy import Subscription
+
+        try:
+            from .database import get_session
+
+            session = get_session()
+        except:
+            logger.error("Cannot get database session")
+            return {"status": "error", "message": "Database unavailable"}
+
+        subscription = (
+            session.query(Subscription).filter_by(tenant_id=tenant_id).first()
         )
-        return {
-            "status": "updated",
-            "provider": "lemonsqueezy",
-            "tenant_id": tenant_id,
-            "plan": new_plan,
-        }
+        if not subscription or not subscription.lemonsqueezy_subscription_id:
+            logger.warning(f"No subscription found for tenant {tenant_id}")
+            return {"status": "error", "message": "Subscription not found"}
+
+        variant_id = self._get_variant_id_for_plan(new_plan)
+        if not variant_id:
+            logger.error(f"No variant ID configured for plan: {new_plan}")
+            return {"status": "error", "message": f"Plan {new_plan} not configured"}
+
+        if not self.api_key:
+            logger.error("LemonSqueezy API key not configured")
+            return {"status": "error", "message": "API key not configured"}
+
+        try:
+            if HTTPX_AVAILABLE:
+                import httpx
+
+                response = httpx.patch(
+                    f"https://api.lemonsqueezy.com/v1/subscriptions/{subscription.lemonsqueezy_subscription_id}",
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    },
+                    json={
+                        "data": {
+                            "type": "subscriptions",
+                            "id": subscription.lemonsqueezy_subscription_id,
+                            "attributes": {"variant_id": variant_id},
+                        }
+                    },
+                    timeout=30.0,
+                )
+                response.raise_for_status()
+            else:
+                from urllib.request import Request, urlopen
+                import json
+
+                req = Request(
+                    f"https://api.lemonsqueezy.com/v1/subscriptions/{subscription.lemonsqueezy_subscription_id}",
+                    data=json.dumps(
+                        {
+                            "data": {
+                                "type": "subscriptions",
+                                "id": subscription.lemonsqueezy_subscription_id,
+                                "attributes": {"variant_id": variant_id},
+                            }
+                        }
+                    ).encode(),
+                    headers={
+                        "Authorization": f"Bearer {self.api_key}",
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                    },
+                    method="PATCH",
+                )
+                urlopen(req, timeout=30)
+
+            logger.info(
+                f"LemonSqueezy subscription updated for tenant {tenant_id} to plan {new_plan}"
+            )
+            return {
+                "status": "updated",
+                "provider": "lemonsqueezy",
+                "tenant_id": tenant_id,
+                "plan": new_plan,
+            }
+        except Exception as e:
+            logger.error(f"LemonSqueezy update error: {e}")
+            return {"status": "error", "message": str(e)}
 
     def get_subscription(self, tenant_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve subscription details from LemonSqueezy."""
-        logger.info(f"LemonSqueezy: Retrieving subscription for tenant {tenant_id}")
-        return None
+        from .lemonsqueezy import Subscription
+
+        try:
+            from .database import get_session
+
+            session = get_session()
+        except:
+            logger.error("Cannot get database session")
+            return None
+
+        subscription = (
+            session.query(Subscription).filter_by(tenant_id=tenant_id).first()
+        )
+        if not subscription:
+            logger.info(f"No subscription found for tenant {tenant_id}")
+            return None
+
+        return {
+            "tenant_id": subscription.tenant_id,
+            "plan": subscription.plan,
+            "status": subscription.status,
+            "subscription_id": subscription.lemonsqueezy_subscription_id,
+            "current_period_start": subscription.current_period_start.isoformat()
+            if subscription.current_period_start
+            else None,
+            "current_period_end": subscription.current_period_end.isoformat()
+            if subscription.current_period_end
+            else None,
+            "cancel_at_period_end": subscription.cancel_at_period_end,
+        }
+
+    def _get_variant_id_for_plan(self, plan: str) -> Optional[str]:
+        variant_map = {
+            "starter": os.getenv("LEMONSQUEEZY_VARIANT_STARTER"),
+            "pro": os.getenv("LEMONSQUEEZY_VARIANT_PRO"),
+            "enterprise": os.getenv("LEMONSQUEEZY_VARIANT_ENTERPRISE"),
+        }
+        return variant_map.get(plan.lower())
 
     def verify_webhook_signature(self, signature: str, body: bytes) -> bool:
         """Verify LemonSqueezy webhook signature."""
@@ -165,65 +423,200 @@ class LemonSqueezyProvider(BillingProvider):
 
 
 class StripeProvider(BillingProvider):
-    """Stripe billing provider implementation (stub for future use)."""
+    """Stripe billing provider implementation."""
 
     def __init__(self):
-        """Initialize Stripe provider."""
         self.api_key = os.getenv("STRIPE_API_KEY")
+        self.webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
         if not self.api_key:
             logger.warning("STRIPE_API_KEY not configured")
+        if STRIPE_AVAILABLE and self.api_key:
+            stripe.api_key = self.api_key
 
     def create_subscription(
         self, tenant_id: str, plan: str, customer_email: str
     ) -> Dict[str, Any]:
-        """
-        Create subscription via Stripe.
+        if not STRIPE_AVAILABLE:
+            logger.error("stripe library not installed")
+            return {
+                "status": "error",
+                "provider": "stripe",
+                "message": "stripe library not installed",
+            }
 
-        TODO: Implement Stripe API integration
-        """
-        logger.info(
-            f"Stripe: Creating subscription for tenant {tenant_id}, plan {plan}"
-        )
-        return {
-            "status": "pending",
-            "provider": "stripe",
-            "tenant_id": tenant_id,
-            "plan": plan,
-            "message": "Stripe integration not yet implemented",
-        }
+        if not self.api_key:
+            logger.error("STRIPE_API_KEY not configured")
+            return {
+                "status": "error",
+                "provider": "stripe",
+                "message": "API key not configured",
+            }
+
+        price_id = self._get_price_id_for_plan(plan)
+        if not price_id:
+            logger.error(f"No price ID configured for plan: {plan}")
+            return {
+                "status": "error",
+                "provider": "stripe",
+                "message": f"Plan {plan} not configured",
+            }
+
+        try:
+            customer = stripe.Customer.create(
+                email=customer_email,
+                metadata={"tenant_id": tenant_id},
+            )
+
+            subscription = stripe.Subscription.create(
+                customer=customer.id,
+                items=[{"price": price_id}],
+                metadata={"tenant_id": tenant_id, "plan": plan},
+            )
+
+            logger.info(f"Stripe subscription created for tenant {tenant_id}")
+            return {
+                "status": "success",
+                "provider": "stripe",
+                "tenant_id": tenant_id,
+                "plan": plan,
+                "subscription_id": subscription.id,
+                "customer_id": customer.id,
+            }
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe API error: {e}")
+            return {
+                "status": "error",
+                "provider": "stripe",
+                "message": str(e),
+            }
 
     def cancel_subscription(self, tenant_id: str) -> Dict[str, Any]:
-        """Cancel subscription via Stripe."""
-        logger.info(f"Stripe: Cancelling subscription for tenant {tenant_id}")
-        return {
-            "status": "cancelled",
-            "provider": "stripe",
-            "tenant_id": tenant_id,
-            "message": "Stripe integration not yet implemented",
-        }
+        if not STRIPE_AVAILABLE:
+            logger.error("stripe library not installed")
+            return {"status": "error", "message": "stripe library not installed"}
+
+        subscription_id = self._get_stripe_subscription_id(tenant_id)
+        if not subscription_id:
+            logger.warning(f"No subscription found for tenant {tenant_id}")
+            return {"status": "error", "message": "Subscription not found"}
+
+        try:
+            stripe.Subscription.delete(subscription_id)
+            logger.info(f"Stripe subscription cancelled for tenant {tenant_id}")
+            return {
+                "status": "cancelled",
+                "provider": "stripe",
+                "tenant_id": tenant_id,
+            }
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe cancel error: {e}")
+            return {"status": "error", "message": str(e)}
 
     def update_subscription(self, tenant_id: str, new_plan: str) -> Dict[str, Any]:
-        """Update subscription plan via Stripe."""
-        logger.info(
-            f"Stripe: Updating subscription for tenant {tenant_id} to plan {new_plan}"
-        )
-        return {
-            "status": "updated",
-            "provider": "stripe",
-            "tenant_id": tenant_id,
-            "plan": new_plan,
-            "message": "Stripe integration not yet implemented",
-        }
+        if not STRIPE_AVAILABLE:
+            logger.error("stripe library not installed")
+            return {"status": "error", "message": "stripe library not installed"}
+
+        subscription_id = self._get_stripe_subscription_id(tenant_id)
+        if not subscription_id:
+            logger.warning(f"No subscription found for tenant {tenant_id}")
+            return {"status": "error", "message": "Subscription not found"}
+
+        price_id = self._get_price_id_for_plan(new_plan)
+        if not price_id:
+            logger.error(f"No price ID configured for plan: {new_plan}")
+            return {"status": "error", "message": f"Plan {new_plan} not configured"}
+
+        try:
+            subscription = stripe.Subscription.retrieve(subscription_id)
+            stripe.Subscription.modify(
+                subscription_id,
+                items=[
+                    {
+                        "id": subscription["items"]["data"][0].id,
+                        "price": price_id,
+                    }
+                ],
+                metadata={"plan": new_plan},
+            )
+            logger.info(
+                f"Stripe subscription updated for tenant {tenant_id} to plan {new_plan}"
+            )
+            return {
+                "status": "updated",
+                "provider": "stripe",
+                "tenant_id": tenant_id,
+                "plan": new_plan,
+            }
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe update error: {e}")
+            return {"status": "error", "message": str(e)}
 
     def get_subscription(self, tenant_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieve subscription details from Stripe."""
-        logger.info(f"Stripe: Retrieving subscription for tenant {tenant_id}")
-        return None
+        if not STRIPE_AVAILABLE:
+            logger.error("stripe library not installed")
+            return None
+
+        subscription_id = self._get_stripe_subscription_id(tenant_id)
+        if not subscription_id:
+            logger.info(f"No subscription found for tenant {tenant_id}")
+            return None
+
+        try:
+            subscription = stripe.Subscription.retrieve(subscription_id)
+            return {
+                "tenant_id": tenant_id,
+                "subscription_id": subscription.id,
+                "status": subscription.status,
+                "current_period_start": subscription.current_period_start,
+                "current_period_end": subscription.current_period_end,
+                "cancel_at_period_end": subscription.cancel_at_period_end,
+            }
+        except stripe.error.StripeError as e:
+            logger.error(f"Stripe retrieve error: {e}")
+            return None
 
     def verify_webhook_signature(self, signature: str, body: bytes) -> bool:
-        """Verify Stripe webhook signature."""
-        logger.warning("Stripe webhook verification not yet implemented")
-        return False
+        if not STRIPE_AVAILABLE:
+            logger.error("stripe library not installed")
+            return False
+
+        if not self.webhook_secret:
+            logger.warning("STRIPE_WEBHOOK_SECRET not configured")
+            return False
+
+        try:
+            stripe.WebhookSignature.verify_header(body, signature, self.webhook_secret)
+            return True
+        except stripe.error.SignatureVerificationError as e:
+            logger.warning(f"Stripe webhook signature verification failed: {e}")
+            return False
+
+    def _get_price_id_for_plan(self, plan: str) -> Optional[str]:
+        price_map = {
+            "starter": os.getenv("STRIPE_PRICE_STARTER"),
+            "pro": os.getenv("STRIPE_PRICE_PRO"),
+            "enterprise": os.getenv("STRIPE_PRICE_ENTERPRISE"),
+        }
+        return price_map.get(plan.lower())
+
+    def _get_stripe_subscription_id(self, tenant_id: str) -> Optional[str]:
+        from .lemonsqueezy import Subscription
+
+        try:
+            from .database import get_session
+
+            session = get_session()
+        except:
+            logger.error("Cannot get database session")
+            return None
+
+        subscription = (
+            session.query(Subscription).filter_by(tenant_id=tenant_id).first()
+        )
+        if subscription:
+            return subscription.lemonsqueezy_subscription_id
+        return None
 
 
 def get_billing_provider() -> BillingProvider:
