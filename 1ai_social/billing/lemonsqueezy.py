@@ -296,6 +296,8 @@ class LemonSqueezyWebhookHandler:
 
     def _handle_payment_failed(self, payload: Dict[str, Any]) -> Dict[str, str]:
         """Handle subscription_payment_failed event."""
+        from .dunning import DunningManager
+
         data = payload.get("data", {})
         attributes = data.get("attributes", {})
         subscription_id = attributes.get("subscription_id")
@@ -303,7 +305,6 @@ class LemonSqueezyWebhookHandler:
         if not subscription_id:
             return {"status": "ignored", "message": "No subscription_id in payment"}
 
-        # Find subscription and update status
         subscription = (
             self.db.query(Subscription)
             .filter_by(lemonsqueezy_subscription_id=str(subscription_id))
@@ -315,6 +316,11 @@ class LemonSqueezyWebhookHandler:
             subscription.updated_at = datetime.utcnow()
             self.db.commit()
             logger.info(f"Payment failed for subscription: {subscription_id}")
+
+            dunning = DunningManager(self.db)
+            dunning.handle_payment_failure(
+                tenant_id=subscription.tenant_id, subscription_id=subscription.id
+            )
 
         return {"status": "success", "message": "Payment failure recorded"}
 

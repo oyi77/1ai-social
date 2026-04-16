@@ -494,3 +494,141 @@ def lemonsqueezy_webhook(signature: str, body: str) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"lemonsqueezy_webhook failed: {e}", exc_info=True)
         return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+@track_metrics("/usage/record")
+@require_tenant_context(get_db_session)
+def record_usage_event(
+    event_type: str,
+    quantity: int = 1,
+    metadata: Optional[dict] = None,
+    _tenant_id: str = None,
+    _db_session: Session = None,
+) -> dict[str, Any]:
+    """Record a usage event for billing metering.
+
+    Args:
+        event_type: Type of event (posts_published, api_calls, connected_accounts)
+        quantity: Number of units consumed (default: 1)
+        metadata: Optional metadata (must not contain PII)
+    """
+    try:
+        from .billing.usage import record_usage
+
+        event = record_usage(
+            _db_session,
+            _tenant_id,
+            event_type,
+            quantity,
+            metadata,
+        )
+
+        return {
+            "status": "success",
+            "event_id": event.id,
+            "tenant_id": event.tenant_id,
+            "event_type": event.event_type,
+            "quantity": event.quantity,
+            "created_at": event.created_at.isoformat(),
+        }
+
+    except ValueError as e:
+        logger.error(f"Invalid usage event: {e}")
+        return {"status": "error", "message": str(e)}
+    except Exception as e:
+        logger.error(f"record_usage_event failed: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+@track_metrics("/usage/current")
+@require_tenant_context(get_db_session)
+def get_current_usage(
+    _tenant_id: str = None,
+    _db_session: Session = None,
+) -> dict[str, Any]:
+    """Get current month usage for the tenant.
+
+    Returns:
+        Usage counts by event type for the current billing month
+    """
+    try:
+        from .billing.usage import get_current_month_usage
+
+        usage = get_current_month_usage(_db_session, _tenant_id)
+
+        return {
+            "status": "success",
+            "tenant_id": _tenant_id,
+            "period": "current_month",
+            "usage": usage,
+        }
+
+    except Exception as e:
+        logger.error(f"get_current_usage failed: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+@track_metrics("/usage/overage")
+@require_tenant_context(get_db_session)
+def check_usage_overage(
+    plan_name: str,
+    _tenant_id: str = None,
+    _db_session: Session = None,
+) -> dict[str, Any]:
+    """Check if tenant has exceeded plan limits.
+
+    Args:
+        plan_name: Subscription plan name (starter, pro, enterprise)
+
+    Returns:
+        Overage information with usage, limits, and overage amounts
+    """
+    try:
+        from .billing.usage import check_overage
+
+        result = check_overage(_db_session, _tenant_id, plan_name)
+
+        return {
+            "status": "success",
+            "tenant_id": _tenant_id,
+            "plan": plan_name,
+            **result,
+        }
+
+    except Exception as e:
+        logger.error(f"check_usage_overage failed: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+@track_metrics("/usage/summary")
+@require_tenant_context(get_db_session)
+def get_usage_summary(
+    plan_name: str,
+    _tenant_id: str = None,
+    _db_session: Session = None,
+) -> dict[str, Any]:
+    """Get comprehensive usage summary with limits and percentages.
+
+    Args:
+        plan_name: Subscription plan name (starter, pro, enterprise)
+
+    Returns:
+        Complete usage summary including percentages and warnings
+    """
+    try:
+        from .billing.usage import get_usage_summary as get_summary
+
+        summary = get_summary(_db_session, _tenant_id, plan_name)
+
+        return {
+            "status": "success",
+            **summary,
+        }
+
+    except Exception as e:
+        logger.error(f"get_usage_summary failed: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
