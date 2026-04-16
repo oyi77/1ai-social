@@ -51,6 +51,7 @@ def upgrade() -> None:
     op.create_index("idx_api_keys_expires_at", "api_keys", ["expires_at"])
 
     op.execute("ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;")
+    op.execute("ALTER TABLE api_keys FORCE ROW LEVEL SECURITY;")
 
     op.execute("""
         CREATE POLICY tenant_isolation_policy ON api_keys

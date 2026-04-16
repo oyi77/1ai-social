@@ -164,7 +164,7 @@ def create_api_key(
         RETURNING id, tenant_id, scopes, name, expires_at, created_at
     """)
 
-    session.execute(text("SELECT set_config('app.user_role', 'admin', false)"))
+    session.execute(text("SET app.user_role = 'admin'"))
 
     result = session.execute(
         query,
@@ -177,7 +177,7 @@ def create_api_key(
         },
     ).fetchone()
 
-    session.execute(text("SELECT set_config('app.user_role', '', false)"))
+    session.execute(text("SET app.user_role = ''"))
     session.commit()
 
     return {
@@ -213,14 +213,13 @@ def validate_api_key(
         ExpiredAPIKeyError: If key has expired
         InsufficientScopeError: If key lacks required scopes
     """
-    # Validate format first
     if not validate_api_key_format(api_key):
         raise InvalidAPIKeyError("Invalid API key format")
 
-    # Hash the key for lookup
     key_hash = hashlib.sha256(api_key.encode()).hexdigest()
 
-    # Look up key in database
+    session.execute(text("SET app.user_role = 'admin'"))
+
     query = text("""
         SELECT id, tenant_id, scopes, name, expires_at
         FROM api_keys
@@ -229,14 +228,14 @@ def validate_api_key(
 
     result = session.execute(query, {"key_hash": key_hash}).fetchone()
 
+    session.execute(text("SET app.user_role = ''"))
+
     if not result:
         raise InvalidAPIKeyError("API key not found")
 
-    # Check expiration
     if result.expires_at and result.expires_at < datetime.now(timezone.utc):
         raise ExpiredAPIKeyError("API key has expired")
 
-    # Check scopes
     key_scopes = result.scopes if isinstance(result.scopes, list) else []
 
     if required_scopes:
@@ -278,10 +277,7 @@ def set_tenant_context_from_key(session: Session, api_key: str) -> str:
     tenant_id = key_data["tenant_id"]
 
     # Set tenant context for RLS
-    session.execute(
-        text("SELECT set_config('app.current_tenant_id', :tenant_id, false)"),
-        {"tenant_id": tenant_id},
-    )
+    session.execute(text(f"SET app.current_tenant_id = '{tenant_id}'"))
 
     return tenant_id
 

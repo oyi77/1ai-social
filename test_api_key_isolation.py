@@ -67,11 +67,12 @@ def test_cross_tenant_access_blocked():
         print(f"✓ Created Alpha key: {key_alpha['api_key'][:40]}...")
         print(f"✓ Created Beta key: {key_beta['api_key'][:40]}...")
 
-        session.execute(text("SELECT clear_tenant_context()"))
+        session.execute(text("SET app.current_tenant_id = ''"))
+        session.execute(text("SET app.user_role = ''"))
         session.commit()
 
         set_tenant_context_from_key(session, key_alpha["api_key"])
-        session.commit()
+        session.execute(text("SET app.user_role = ''"))
 
         result = session.execute(
             text("""
@@ -82,10 +83,11 @@ def test_cross_tenant_access_blocked():
         print(f"✓ Alpha can see {result.count} key(s) (should be 1 - only their own)")
         assert result.count == 1, f"Alpha should only see 1 key, saw {result.count}"
 
-        session.execute(text("SELECT clear_tenant_context()"))
-        session.commit()
+        session.execute(text("SET app.current_tenant_id = ''"))
+        session.execute(text("SET app.user_role = ''"))
 
         set_tenant_context_from_key(session, key_beta["api_key"])
+        session.execute(text("SET app.user_role = ''"))
 
         result = session.execute(
             text("""
@@ -99,7 +101,8 @@ def test_cross_tenant_access_blocked():
         print("✓ Cross-tenant access successfully blocked by RLS\n")
 
     finally:
-        session.execute(text("SELECT clear_tenant_context()"))
+        session.execute(text("SET app.current_tenant_id = ''"))
+        session.execute(text("SET app.user_role = 'admin'"))
         session.execute(
             text(
                 "DELETE FROM api_keys WHERE tenant_id IN ('tenant-alpha', 'tenant-beta')"
