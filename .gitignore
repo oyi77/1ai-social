@@ -32,3 +32,4 @@ data/*.csv
 # Environment
 .env
 .env.local
+.sisyphus/
