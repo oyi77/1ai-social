@@ -632,3 +632,116 @@ def get_usage_summary(
     except Exception as e:
         logger.error(f"get_usage_summary failed: {e}", exc_info=True)
         return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+@track_metrics("/gdpr/consent")
+@require_tenant_context(get_db_session)
+def record_consent(
+    user_id: str,
+    consent_type: str,
+    consented: bool,
+    ip_address: str = None,
+    user_agent: str = None,
+    metadata: dict = None,
+    _tenant_id: str = None,
+    _db_session: Session = None,
+) -> dict[str, Any]:
+    """Record user consent for GDPR compliance."""
+    try:
+        from .gdpr import GDPRManager
+
+        manager = GDPRManager(_db_session)
+        consent_id = manager.record_consent(
+            user_id=user_id,
+            tenant_id=_tenant_id,
+            consent_type=consent_type,
+            consented=consented,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            metadata=metadata,
+        )
+
+        return {
+            "status": "success",
+            "consent_id": consent_id,
+            "user_id": user_id,
+            "consent_type": consent_type,
+            "consented": consented,
+        }
+
+    except Exception as e:
+        logger.error(f"record_consent failed: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+@track_metrics("/gdpr/data-export")
+@require_tenant_context(get_db_session)
+def export_user_data(
+    user_id: str,
+    _tenant_id: str = None,
+    _db_session: Session = None,
+) -> dict[str, Any]:
+    """Export all user data for DSAR (Data Subject Access Request)."""
+    try:
+        from .gdpr import GDPRManager
+
+        manager = GDPRManager(_db_session)
+        export_data = manager.export_user_data(user_id=user_id, tenant_id=_tenant_id)
+
+        return {"status": "success", **export_data}
+
+    except Exception as e:
+        logger.error(f"export_user_data failed: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+@track_metrics("/gdpr/delete-account")
+@require_tenant_context(get_db_session)
+def delete_user_data(
+    user_id: str,
+    reason: str = None,
+    _tenant_id: str = None,
+    _db_session: Session = None,
+) -> dict[str, Any]:
+    """Delete user data (anonymize PII) for GDPR right to be forgotten."""
+    try:
+        from .gdpr import GDPRManager
+
+        manager = GDPRManager(_db_session)
+        deletion_summary = manager.delete_user_data(
+            user_id=user_id, tenant_id=_tenant_id, reason=reason
+        )
+
+        return {"status": "success", **deletion_summary}
+
+    except Exception as e:
+        logger.error(f"delete_user_data failed: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}
+
+
+@mcp.tool()
+@track_metrics("/gdpr/consent-history")
+@require_tenant_context(get_db_session)
+def get_consent_history(
+    user_id: str,
+    consent_type: str = None,
+    _tenant_id: str = None,
+    _db_session: Session = None,
+) -> dict[str, Any]:
+    """Get consent history for a user."""
+    try:
+        from .gdpr import GDPRManager
+
+        manager = GDPRManager(_db_session)
+        history = manager.get_consent_history(
+            user_id=user_id, tenant_id=_tenant_id, consent_type=consent_type
+        )
+
+        return {"status": "success", "user_id": user_id, "consent_history": history}
+
+    except Exception as e:
+        logger.error(f"get_consent_history failed: {e}", exc_info=True)
+        return {"status": "error", "message": str(e)}

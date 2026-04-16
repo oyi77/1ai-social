@@ -19,6 +19,13 @@ from .billing.dashboard import (
     get_invoices,
     get_payment_methods,
 )
+from .admin import (
+    get_admin_metrics,
+    get_admin_users,
+    get_admin_subscriptions,
+    get_admin_analytics,
+    AdminAuthError,
+)
 
 
 def init_sentry():
@@ -231,6 +238,84 @@ def billing_payment_methods(tenant_id: str) -> dict[str, Any]:
         logger.error(f"Error retrieving payment methods: {str(e)}")
         sentry_sdk.capture_exception(e)
         return {"error": str(e), "tenant_id": tenant_id}
+
+
+@mcp.tool()
+def admin_metrics(user_role: str) -> dict[str, Any]:
+    """Get admin dashboard metrics: MRR, active users, churn rate, new signups."""
+    try:
+        session_factory = _get_session_factory()
+        session = session_factory()
+        result = get_admin_metrics(session, user_role)
+        session.close()
+        logger.info("Admin metrics retrieved")
+        return result
+    except AdminAuthError as e:
+        logger.warning(f"Admin auth failed: {str(e)}")
+        return {"error": "unauthorized", "message": str(e)}
+    except Exception as e:
+        logger.error(f"Error retrieving admin metrics: {str(e)}")
+        sentry_sdk.capture_exception(e)
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def admin_users(
+    user_role: str, page: int = 1, per_page: int = 50, search: str = None
+) -> dict[str, Any]:
+    """Get paginated user list with search/filter capability."""
+    try:
+        session_factory = _get_session_factory()
+        session = session_factory()
+        result = get_admin_users(session, user_role, page, per_page, search)
+        session.close()
+        logger.info(f"Admin users retrieved: page={page}")
+        return result
+    except AdminAuthError as e:
+        logger.warning(f"Admin auth failed: {str(e)}")
+        return {"error": "unauthorized", "message": str(e)}
+    except Exception as e:
+        logger.error(f"Error retrieving admin users: {str(e)}")
+        sentry_sdk.capture_exception(e)
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def admin_subscriptions(user_role: str, status: str = None) -> dict[str, Any]:
+    """Get subscription management data with optional status filter."""
+    try:
+        session_factory = _get_session_factory()
+        session = session_factory()
+        result = get_admin_subscriptions(session, user_role, status)
+        session.close()
+        logger.info(f"Admin subscriptions retrieved: status={status}")
+        return result
+    except AdminAuthError as e:
+        logger.warning(f"Admin auth failed: {str(e)}")
+        return {"error": "unauthorized", "message": str(e)}
+    except Exception as e:
+        logger.error(f"Error retrieving admin subscriptions: {str(e)}")
+        sentry_sdk.capture_exception(e)
+        return {"error": str(e)}
+
+
+@mcp.tool()
+def admin_analytics(user_role: str, period: str = "30d") -> dict[str, Any]:
+    """Get usage analytics for specified period (7d, 30d, 90d, 1y)."""
+    try:
+        session_factory = _get_session_factory()
+        session = session_factory()
+        result = get_admin_analytics(session, user_role, period)
+        session.close()
+        logger.info(f"Admin analytics retrieved: period={period}")
+        return result
+    except AdminAuthError as e:
+        logger.warning(f"Admin auth failed: {str(e)}")
+        return {"error": "unauthorized", "message": str(e)}
+    except Exception as e:
+        logger.error(f"Error retrieving admin analytics: {str(e)}")
+        sentry_sdk.capture_exception(e)
+        return {"error": str(e)}
 
 
 def main() -> None:
