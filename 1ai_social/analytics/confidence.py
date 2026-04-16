@@ -1,5 +1,7 @@
-"""Confidence score updater based on post performance."""
+"""Confidence score updater based on post performance with persistence."""
 
+import json
+from pathlib import Path
 from typing import Dict, Any, List, Tuple
 from ..logging_config import get_logger
 
@@ -21,12 +23,29 @@ VIEW_THRESHOLDS = [
     (1000, 0.02),
 ]
 
+DEFAULT_SCORES_PATH = (
+    Path(__file__).parent.parent.parent / "data" / "confidence_scores.json"
+)
+
 
 class ConfidenceUpdater:
-    """Updates hook confidence scores based on actual performance data."""
+    """Updates hook confidence scores based on actual performance data with persistence."""
 
-    def __init__(self):
-        self._scores: Dict[str, float] = dict(BASE_CONFIDENCE)
+    def __init__(self, scores_path: str = None):
+        self._path = Path(scores_path) if scores_path else DEFAULT_SCORES_PATH
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._scores: Dict[str, float] = self._load()
+
+    def _load(self) -> Dict[str, float]:
+        if self._path.exists():
+            try:
+                return json.loads(self._path.read_text())
+            except (json.JSONDecodeError, OSError):
+                pass
+        return dict(BASE_CONFIDENCE)
+
+    def _save(self) -> None:
+        self._path.write_text(json.dumps(self._scores, indent=2))
 
     def update_hook_confidence(self, hook_type: str, views: int) -> float:
         """Update confidence for a hook based on view count.
@@ -47,6 +66,7 @@ class ConfidenceUpdater:
 
         new_score = min(current + boost, 1.0)
         self._scores[hook_type] = new_score
+        self._save()
         logger.info(
             f"Confidence updated: {hook_type} {current:.2f} → {new_score:.2f} (views: {views})"
         )
@@ -89,6 +109,8 @@ class ConfidenceUpdater:
             if self._scores[hook_type] > BASE_CONFIDENCE.get(hook_type, 0.5):
                 self._scores[hook_type] *= decay_factor
                 count += 1
+        if count:
+            self._save()
         logger.info(f"Decayed {count} hooks by factor {decay_factor}")
         return count
 

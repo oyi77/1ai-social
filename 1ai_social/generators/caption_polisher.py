@@ -59,8 +59,10 @@ class CaptionPolisher:
     def _get_humanizer(self):
         if self._humanizer is None:
             from ..clients.humanizer import HumanizerClient
+            from ..config import Config
 
-            self._humanizer = HumanizerClient()
+            config = Config.load()
+            self._humanizer = HumanizerClient(config)
         return self._humanizer
 
     def polish(self, caption: str, platform: Platform) -> str:

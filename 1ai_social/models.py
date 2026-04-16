@@ -108,6 +108,9 @@ class AnalyticsRecord(BaseModel):
 
     post_id: str = Field(..., description="Associated post ID")
     platform: Platform = Field(..., description="Platform")
+    content_type: str = Field(
+        default="video", description="Content type: video, image, text, slideshow"
+    )
     views: int = Field(default=0, ge=0, description="View count")
     likes: int = Field(default=0, ge=0, description="Like count")
     shares: int = Field(default=0, ge=0, description="Share count")
@@ -119,6 +122,14 @@ class AnalyticsRecord(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
         description="Record timestamp",
     )
+
+    @field_validator("content_type")
+    @classmethod
+    def validate_content_type(cls, v):
+        allowed = ["video", "image", "text", "slideshow"]
+        if v not in allowed:
+            raise ValueError(f"Content type must be one of {allowed}")
+        return v
 
     @field_validator("engagement_rate")
     @classmethod

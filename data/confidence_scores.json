@@ -1,0 +1,8 @@
+{
+  "landlord_ai": 0.9,
+  "parent_ai": 0.85,
+  "roommate_ai": 0.8,
+  "curiosity": 0.7,
+  "value": 0.6,
+  "emotional": 0.5
+}

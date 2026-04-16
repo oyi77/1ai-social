@@ -36,11 +36,21 @@ class AnalyticsTracker:
 
         Args:
             post_id: Post identifier.
-            metrics: Dict with keys like views, likes, shares, comments.
+            metrics: Dict with keys like views, likes, shares, comments, platform, content_type.
         """
+        views = metrics.get("views", 0)
+        likes = metrics.get("likes", 0)
+        shares = metrics.get("shares", 0)
+        comments = metrics.get("comments", 0)
+
+        engagement_rate = 0.0
+        if views > 0:
+            engagement_rate = ((likes + comments + shares) / views) * 100
+
         self._records[post_id] = {
             "post_id": post_id,
             "metrics": metrics,
+            "engagement_rate": engagement_rate,
             "recorded_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         }
         self._save()
@@ -59,13 +69,17 @@ class AnalyticsTracker:
         return record.get("metrics") if record else None
 
     def aggregate_stats(
-        self, platform: Optional[Platform] = None, days: int = 30
+        self,
+        platform: Optional[Platform] = None,
+        days: int = 30,
+        content_type: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Aggregate statistics across posts.
 
         Args:
             platform: Filter by platform (None for all).
             days: Number of days to look back.
+            content_type: Filter by content type (video, image, text, slideshow).
 
         Returns:
             Aggregated stats dict.
@@ -87,6 +101,11 @@ class AnalyticsTracker:
             if platform:
                 record_platform = record.get("metrics", {}).get("platform")
                 if record_platform and record_platform != platform.value:
+                    continue
+
+            if content_type:
+                record_content_type = record.get("metrics", {}).get("content_type")
+                if record_content_type and record_content_type != content_type:
                     continue
 
             metrics = record.get("metrics", {})
