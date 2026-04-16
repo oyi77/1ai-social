@@ -7,3 +7,5 @@ python-crontab>=2.7.1
 tenacity>=8.2.0
 python-dotenv>=1.0.0
 prometheus-client>=0.20.0
+cryptography>=41.0.0
+boto3>=1.28.0
