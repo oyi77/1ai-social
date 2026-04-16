@@ -12,3 +12,4 @@ boto3>=1.28.0
 redis>=5.0.0
 pyjwt>=2.8.0
 sqlalchemy>=2.0.0
+locust>=2.15.0

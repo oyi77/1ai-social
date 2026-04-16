@@ -12,6 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 from . import security_headers
+from .cache import Cache
 from .rate_limiter import rate_limit, RateLimitExceeded, get_user_id_from_kwargs
 from .tenant_context import get_tenant_middleware, require_tenant_context
 from .webhooks import WebhookVerificationError, create_verifier
@@ -37,16 +38,25 @@ _db_engine = None
 _db_session_factory = None
 _tenant_middleware = None
 _redis_client = None
+_cache = None
 
 
 def _get_db_engine():
-    """Get or create database engine."""
+    """Get or create database engine with connection pooling."""
     global _db_engine
     if _db_engine is None:
         import os
 
         db_url = os.getenv("DATABASE_URL", "postgresql://localhost/1ai_social")
-        _db_engine = create_engine(db_url, pool_pre_ping=True)
+        _db_engine = create_engine(
+            db_url,
+            pool_pre_ping=True,
+            pool_size=20,
+            max_overflow=10,
+            pool_recycle=3600,
+            pool_timeout=30,
+            echo=False,
+        )
     return _db_engine
 
 
@@ -83,6 +93,15 @@ def _get_redis_client():
         redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
         _redis_client = redis.from_url(redis_url, decode_responses=False)
     return _redis_client
+
+
+def get_cache() -> Cache:
+    """Get or create cache instance."""
+    global _cache
+    if _cache is None:
+        redis_client = _get_redis_client()
+        _cache = Cache(redis_client)
+    return _cache
 
 
 def _get_orchestrator():

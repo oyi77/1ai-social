@@ -11,6 +11,7 @@ from sqlalchemy import (
     ForeignKey,
     Enum,
     Boolean,
+    Index,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -53,6 +54,11 @@ class PlatformModel(Base):
     hooks = relationship("HookModel", back_populates="platform")
     analytics_records = relationship("AnalyticsRecordModel", back_populates="platform")
 
+    __table_args__ = (
+        Index("idx_platforms_user_id", "user_id"),
+        Index("idx_platforms_tenant_id", "tenant_id"),
+    )
+
 
 class ContentModel(Base):
     """Content table for social media content."""
@@ -79,6 +85,12 @@ class ContentModel(Base):
     posts = relationship("PostModel", back_populates="content")
     hooks = relationship("HookModel", back_populates="content")
 
+    __table_args__ = (
+        Index("idx_contents_platform", "platform"),
+        Index("idx_contents_tenant_id", "tenant_id"),
+        Index("idx_contents_created_at", "created_at"),
+    )
+
 
 class HookModel(Base):
     """Hook/angle table for content hooks."""
@@ -99,6 +111,11 @@ class HookModel(Base):
     # Relationships
     content = relationship("ContentModel", back_populates="hooks")
     platform = relationship("PlatformModel", back_populates="hooks")
+
+    __table_args__ = (
+        Index("idx_hooks_content_id", "content_id"),
+        Index("idx_hooks_tenant_id", "tenant_id"),
+    )
 
 
 class PostModel(Base):
@@ -129,6 +146,14 @@ class PostModel(Base):
     platform = relationship("PlatformModel", back_populates="posts")
     analytics_records = relationship("AnalyticsRecordModel", back_populates="post")
 
+    __table_args__ = (
+        Index("idx_posts_status", "status"),
+        Index("idx_posts_scheduled_time", "scheduled_time"),
+        Index("idx_posts_tenant_id", "tenant_id"),
+        Index("idx_posts_platform_id", "platform_id"),
+        Index("idx_posts_status_scheduled", "status", "scheduled_time"),
+    )
+
 
 class AnalyticsRecordModel(Base):
     """Analytics record table for post performance metrics."""
@@ -152,3 +177,10 @@ class AnalyticsRecordModel(Base):
     # Relationships
     post = relationship("PostModel", back_populates="analytics_records")
     platform = relationship("PlatformModel", back_populates="analytics_records")
+
+    __table_args__ = (
+        Index("idx_analytics_post_id", "post_id"),
+        Index("idx_analytics_platform_id", "platform_id"),
+        Index("idx_analytics_tenant_id", "tenant_id"),
+        Index("idx_analytics_recorded_at", "recorded_at"),
+    )

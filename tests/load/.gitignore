@@ -1,0 +1,4 @@
+results/*.html
+results/*.csv
+__pycache__/
+*.pyc
