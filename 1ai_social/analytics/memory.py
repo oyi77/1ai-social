@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from ..logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -40,7 +40,7 @@ class MemorySystem:
         lesson = {
             "hook_type": hook_type,
             "result": result,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         }
         self._lessons.append(lesson)
         self._save()
@@ -106,7 +106,9 @@ class MemorySystem:
         Returns:
             Number of lessons removed.
         """
-        cutoff = datetime.utcnow().timestamp() - (days * 86400)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None).timestamp() - (
+            days * 86400
+        )
         original_count = len(self._lessons)
 
         self._lessons = [

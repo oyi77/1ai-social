@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from ..models import Platform
 from ..logging_config import get_logger
 
@@ -41,7 +41,7 @@ class AnalyticsTracker:
         self._records[post_id] = {
             "post_id": post_id,
             "metrics": metrics,
-            "recorded_at": datetime.utcnow().isoformat(),
+            "recorded_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         }
         self._save()
         logger.info(f"Tracked post {post_id}: {metrics}")
@@ -76,7 +76,19 @@ class AnalyticsTracker:
         total_comments = 0
         post_count = 0
 
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None)
+        cutoff = cutoff.replace(day=max(cutoff.day - days, 1)).isoformat()
+
         for record in self._records.values():
+            recorded_at = record.get("recorded_at", "")
+            if recorded_at < cutoff:
+                continue
+
+            if platform:
+                record_platform = record.get("metrics", {}).get("platform")
+                if record_platform and record_platform != platform.value:
+                    continue
+
             metrics = record.get("metrics", {})
             total_views += metrics.get("views", 0)
             total_likes += metrics.get("likes", 0)

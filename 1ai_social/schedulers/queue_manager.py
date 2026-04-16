@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 from ..logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -41,7 +41,9 @@ class QueueManager:
         Returns:
             Queue position (0-indexed).
         """
-        item["enqueued_at"] = datetime.utcnow().isoformat()
+        item["enqueued_at"] = (
+            datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
+        )
         item["status"] = "queued"
         self._queue.append(item)
         self._save()

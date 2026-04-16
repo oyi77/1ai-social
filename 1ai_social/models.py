@@ -1,5 +1,5 @@
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from pydantic import BaseModel, Field, field_validator
 
@@ -65,7 +65,8 @@ class Content(BaseModel):
     hashtags: List[str] = Field(default_factory=list, description="Hashtags")
     mentions: List[str] = Field(default_factory=list, description="User mentions")
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="Creation timestamp"
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        description="Creation timestamp",
     )
 
     @field_validator("text")
@@ -115,7 +116,8 @@ class AnalyticsRecord(BaseModel):
         default=0.0, ge=0.0, description="Engagement rate percentage"
     )
     recorded_at: datetime = Field(
-        default_factory=datetime.utcnow, description="Record timestamp"
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        description="Record timestamp",
     )
 
     @field_validator("engagement_rate")

@@ -87,10 +87,8 @@ class VideoPipeline:
         if self._remotion_client is None:
             self._remotion_client = RemotionClient()
 
-        result = self._remotion_client.generate(
-            content=content_dict,
-            style=style,
-        )
+        template_id = content_dict.get("template_id", "tiktok-viral-short")
+        result = self._remotion_client.render_template(template_id, content_dict)
         return result
 
     def _generate_with_content_generator(
@@ -100,8 +98,9 @@ class VideoPipeline:
         if self._content_generator_client is None:
             self._content_generator_client = ContentGeneratorClient()
 
-        result = self._content_generator_client.generate(
-            content=content_dict,
+        result = self._content_generator_client.generate_video(
+            prompt=content_dict.get("text", ""),
+            duration=content_dict.get("duration", 60),
             style=style,
         )
         return result

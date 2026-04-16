@@ -4,7 +4,7 @@ import logging
 import random
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from .base import BaseClient
@@ -14,7 +14,7 @@ from ..models import Platform
 
 class EngagementClient(BaseClient):
     """Client for managing social media engagement across platforms.
-    
+
     Handles liking, commenting, following, unfollowing, and DM operations
     with built-in rate limiting and human-like behavior patterns.
     """
@@ -69,7 +69,7 @@ class EngagementClient(BaseClient):
 
     def health_check(self) -> bool:
         """Check if the engagement client is healthy.
-        
+
         Returns:
             bool: Always True as engagement operates via browser automation.
         """
@@ -78,14 +78,14 @@ class EngagementClient(BaseClient):
 
     def connect(self) -> None:
         """Establish connection to engagement service.
-        
+
         No-op for engagement client as it uses browser automation.
         """
         self.logger.info("Engagement client connect called (no-op)")
 
     def disconnect(self) -> None:
         """Close connection to engagement service.
-        
+
         No-op for engagement client as it uses browser automation.
         """
         self.logger.info("Engagement client disconnect called (no-op)")
@@ -97,11 +97,11 @@ class EngagementClient(BaseClient):
 
     def _check_rate_limit(self, action: str, platform: Platform) -> bool:
         """Check if an action is within rate limits for a platform.
-        
+
         Args:
             action: Action type (like, comment, follow, unfollow, dm)
             platform: Target platform
-            
+
         Returns:
             bool: True if action is allowed, False if rate limit exceeded
         """
@@ -115,7 +115,7 @@ class EngagementClient(BaseClient):
             return False
 
         hourly_limit, daily_limit = limits
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         history = self._action_history[platform][action]
 
         # Clean up old entries
@@ -153,21 +153,23 @@ class EngagementClient(BaseClient):
 
     def _record_action(self, action: str, platform: Platform) -> None:
         """Record an action for rate limit tracking.
-        
+
         Args:
             action: Action type
             platform: Target platform
         """
-        self._action_history[platform][action].append(datetime.utcnow())
+        self._action_history[platform][action].append(
+            datetime.now(timezone.utc).replace(tzinfo=None)
+        )
         self.logger.debug(f"Recorded action: {action} on {platform}")
 
     def like_post(self, post_id: str, platform: Platform) -> bool:
         """Like a post on the specified platform.
-        
+
         Args:
             post_id: Unique identifier of the post
             platform: Target platform
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
@@ -184,16 +186,14 @@ class EngagementClient(BaseClient):
             self.logger.error(f"Failed to like post {post_id} on {platform}: {e}")
             return False
 
-    def comment_on_post(
-        self, post_id: str, comment: str, platform: Platform
-    ) -> bool:
+    def comment_on_post(self, post_id: str, comment: str, platform: Platform) -> bool:
         """Comment on a post with contextual content.
-        
+
         Args:
             post_id: Unique identifier of the post
             comment: Comment text (should be contextual, not generic)
             platform: Target platform
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
@@ -213,18 +213,16 @@ class EngagementClient(BaseClient):
             )
             return True
         except Exception as e:
-            self.logger.error(
-                f"Failed to comment on post {post_id} on {platform}: {e}"
-            )
+            self.logger.error(f"Failed to comment on post {post_id} on {platform}: {e}")
             return False
 
     def follow_user(self, username: str, platform: Platform) -> bool:
         """Follow a user on the specified platform.
-        
+
         Args:
             username: Username to follow
             platform: Target platform
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
@@ -243,33 +241,35 @@ class EngagementClient(BaseClient):
 
     def unfollow_user(self, username: str, platform: Platform) -> bool:
         """Unfollow a user on the specified platform.
-        
+
         Args:
             username: Username to unfollow
             platform: Target platform
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
+        if not self._check_rate_limit("unfollow", platform):
+            self.logger.error(f"Rate limit exceeded for unfollow on {platform}")
+            return False
+
         try:
             self._add_human_delay()
             self._record_action("unfollow", platform)
             self.logger.info(f"Unfollowed user {username} on {platform}")
             return True
         except Exception as e:
-            self.logger.error(
-                f"Failed to unfollow user {username} on {platform}: {e}"
-            )
+            self.logger.error(f"Failed to unfollow user {username} on {platform}: {e}")
             return False
 
     def send_dm(self, username: str, message: str, platform: Platform) -> bool:
         """Send a direct message to a user.
-        
+
         Args:
             username: Recipient username
             message: Message content
             platform: Target platform
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
@@ -284,9 +284,7 @@ class EngagementClient(BaseClient):
         try:
             self._add_human_delay()
             self._record_action("dm", platform)
-            self.logger.info(
-                f"Sent DM to {username} on {platform}: {message[:50]}..."
-            )
+            self.logger.info(f"Sent DM to {username} on {platform}: {message[:50]}...")
             return True
         except Exception as e:
             self.logger.error(f"Failed to send DM to {username} on {platform}: {e}")
@@ -296,12 +294,12 @@ class EngagementClient(BaseClient):
         self, niche: str, platform: Platform, count: int = 10
     ) -> List[Dict]:
         """Find target accounts based on niche/keyword.
-        
+
         Args:
             niche: Niche or keyword to search for
             platform: Target platform
             count: Number of suggestions to return (default: 10)
-            
+
         Returns:
             List of dicts with keys: username, followers, engagement_rate
         """
