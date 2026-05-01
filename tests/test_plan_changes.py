@@ -2,21 +2,31 @@
 
 import pytest
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Column, String, DateTime
 from sqlalchemy.orm import sessionmaker
 
-import sys
 
-sys.path.insert(0, "/home/openclaw/projects/1ai-social")
 
-from ai_social.billing.plan_changes import (
-    calculate_proration,
-    upgrade_plan,
-    downgrade_plan,
-    get_plan_change_preview,
-    PlanChangeError,
-)
-from ai_social.billing.lemonsqueezy import Subscription, Base
+plan_changes = __import__("1ai_social.billing.plan_changes", fromlist=["calculate_proration", "upgrade_plan", "downgrade_plan", "get_plan_change_preview", "PlanChangeError"])
+calculate_proration = plan_changes.calculate_proration
+upgrade_plan = plan_changes.upgrade_plan
+downgrade_plan = plan_changes.downgrade_plan
+get_plan_change_preview = plan_changes.get_plan_change_preview
+PlanChangeError = plan_changes.PlanChangeError
+lemonsqueezy = __import__('1ai_social.billing.lemonsqueezy', fromlist=['Subscription', 'Base'])
+Subscription = lemonsqueezy.Subscription
+Base = lemonsqueezy.Base
+
+class Tenant(Base):
+    __tablename__ = "tenants"
+    __table_args__ = {"extend_existing": True}
+    id = Column(String(255), primary_key=True)
+    name = Column(String(255), nullable=False)
+    plan = Column(String(50), nullable=False, default="starter")
+    status = Column(String(50), nullable=False, default="active")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 
 
 @pytest.fixture

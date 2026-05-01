@@ -7,7 +7,6 @@ Create Date: 2026-04-16 11:18:00.000000
 """
 
 from alembic import op
-import sqlalchemy as sa
 
 
 revision = "013_performance_indexes"

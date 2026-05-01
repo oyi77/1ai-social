@@ -232,7 +232,6 @@ class LemonSqueezyProvider(BillingProvider):
 
     def cancel_subscription(self, tenant_id: str) -> Dict[str, Any]:
         from .lemonsqueezy import Subscription
-        from sqlalchemy.orm import Session
 
         try:
             from .database import get_session

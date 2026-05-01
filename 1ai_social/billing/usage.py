@@ -6,9 +6,9 @@ them for billing period calculations and overage detection.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 import sqlalchemy as sa
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func, and_
+from sqlalchemy import Column, Integer, String, DateTime, func, and_
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.declarative import declarative_base

@@ -417,7 +417,7 @@ class RemotionClient(BaseClient):
             }
 
         except subprocess.TimeoutExpired:
-            logger.error(f"Render timeout after 300 seconds")
+            logger.error("Render timeout after 300 seconds")
             raise RuntimeError("Render timeout - video generation took too long")
         except Exception as e:
             logger.error(f"Render error: {e}")

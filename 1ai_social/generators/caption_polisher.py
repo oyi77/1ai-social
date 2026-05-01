@@ -1,6 +1,6 @@
 """Caption polisher using humanizer for platform-specific optimization."""
 
-from typing import List, Optional
+from typing import List
 from ..models import Platform
 from ..logging_config import get_logger
 

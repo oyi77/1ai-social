@@ -8,7 +8,6 @@ sys.path.insert(0, "/home/openclaw/projects/1ai-social")
 from ai_social.schemas import (
     PostCreateSchema,
     ContentCreateSchema,
-    HookCreateSchema,
     CampaignCreateSchema,
     AnalyticsQuerySchema,
 )
@@ -79,7 +78,7 @@ def test_url_validation():
                 print(f"✓ Valid URL accepted: {url}")
             else:
                 print(f"✗ Invalid URL accepted: {url}")
-        except ValidationError as e:
+        except ValidationError:
             if not should_pass:
                 print(f"✓ Invalid URL rejected: {url}")
             else:
@@ -106,7 +105,7 @@ def test_field_length_limits():
         print(
             f"✓ Hashtags limited to: {len(schema.hashtags)} (from {len(too_many_hashtags)})"
         )
-    except ValidationError as e:
+    except ValidationError:
         print(f"✓ Too many hashtags rejected: {len(too_many_hashtags)}")
 
 
@@ -121,14 +120,14 @@ def test_platform_validation():
         try:
             schema = PostCreateSchema(niche="test", platforms=[platform])
             print(f"✓ Valid platform accepted: {platform}")
-        except ValidationError as e:
+        except ValidationError:
             print(f"✗ Valid platform rejected: {platform}")
 
     for platform in invalid_platforms:
         try:
             schema = PostCreateSchema(niche="test", platforms=[platform])
             print(f"✗ Invalid platform accepted: {platform}")
-        except ValidationError as e:
+        except ValidationError:
             print(f"✓ Invalid platform rejected: {platform}")
 
 
@@ -159,7 +158,7 @@ def test_numeric_bounds():
                 print(f"✓ Valid {field}={value} accepted")
             else:
                 print(f"✗ Invalid {field}={value} accepted")
-        except ValidationError as e:
+        except ValidationError:
             if not should_pass:
                 print(f"✓ Invalid {field}={value} rejected")
             else:

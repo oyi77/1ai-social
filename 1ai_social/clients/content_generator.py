@@ -1,8 +1,6 @@
 """Content Generator client for video and image generation pipeline."""
 
-import os
 import base64
-import logging
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 

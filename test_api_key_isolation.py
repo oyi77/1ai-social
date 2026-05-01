@@ -132,7 +132,7 @@ def test_scope_enforcement():
         key_data = validate_api_key(
             session, read_only_key["api_key"], required_scopes=["read"]
         )
-        print(f"✓ Key validated with 'read' scope")
+        print("✓ Key validated with 'read' scope")
 
         try:
             validate_api_key(

@@ -32,6 +32,7 @@ Base = lemonsqueezy.Base
 
 class Tenant(Base):
     __tablename__ = "tenants"
+    __table_args__ = {"extend_existing": True}
     id = Column(String(255), primary_key=True)
     name = Column(String(255), nullable=False)
     plan = Column(String(50), nullable=False, default="starter")

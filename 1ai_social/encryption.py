@@ -30,7 +30,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.exceptions import InvalidTag
 
-from .secrets import get_secret, get_required_secret
+from .secrets import get_required_secret
 
 logger = logging.getLogger(__name__)
 

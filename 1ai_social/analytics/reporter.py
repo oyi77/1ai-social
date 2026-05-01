@@ -1,6 +1,5 @@
 """Performance reporter for generating content analytics reports."""
 
-from typing import Optional
 from ..logging_config import get_logger
 
 logger = get_logger(__name__)
@@ -37,8 +36,8 @@ class PerformanceReporter:
         stats = tracker.aggregate_stats(days=1)
 
         lines = [
-            f"# Daily Report",
-            f"",
+            "# Daily Report",
+            "",
             f"- **Posts**: {stats['total_posts']}",
             f"- **Total Views**: {stats['total_views']:,}",
             f"- **Total Likes**: {stats['total_likes']:,}",
@@ -61,15 +60,15 @@ class PerformanceReporter:
         top_hooks = confidence.get_top_hooks(limit=3)
 
         lines = [
-            f"# Weekly Performance Report",
-            f"",
-            f"## Overview",
+            "# Weekly Performance Report",
+            "",
+            "## Overview",
             f"- **Posts**: {stats['total_posts']}",
             f"- **Total Views**: {stats['total_views']:,}",
             f"- **Engagement Rate**: {stats['engagement_rate']}%",
             f"- **Avg Views/Post**: {stats['avg_views_per_post']}",
-            f"",
-            f"## Top Performing Hooks",
+            "",
+            "## Top Performing Hooks",
         ]
         for hook_type, score in top_hooks:
             lines.append(f"- **{hook_type}**: {score:.2f} confidence")

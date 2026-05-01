@@ -2,8 +2,6 @@
 
 import os
 import sys
-import json
-from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -87,7 +85,7 @@ def test_consent_withdrawal():
     )
 
     assert current_consent == False
-    print(f"✓ Consent withdrawal recorded correctly")
+    print("✓ Consent withdrawal recorded correctly")
 
     session.close()
 
@@ -113,7 +111,7 @@ def test_export_user_data():
     assert "consent_records" in export_data["data"]
     assert len(export_data["data"]["consent_records"]) > 0
 
-    print(f"✓ User data exported successfully")
+    print("✓ User data exported successfully")
     print(f"  - Consent records: {len(export_data['data']['consent_records'])}")
     print(f"  - Platforms: {len(export_data['data']['platforms'])}")
     print(f"  - Contents: {len(export_data['data']['contents'])}")
@@ -146,7 +144,7 @@ def test_delete_user_data():
     assert "deletion_timestamp" in deletion_summary
     assert "operations" in deletion_summary
 
-    print(f"✓ User data deleted/anonymized")
+    print("✓ User data deleted/anonymized")
     print(
         f"  - Consent records anonymized: {deletion_summary['operations']['consent_records_anonymized']}"
     )
@@ -155,7 +153,7 @@ def test_delete_user_data():
         user_id="test_user_delete", tenant_id=tenant_id
     )
 
-    print(f"✓ Deletion verification:")
+    print("✓ Deletion verification:")
     print(f"  - Deletion complete: {verification['deletion_complete']}")
     print(f"  - PII found: {verification['pii_found']}")
 

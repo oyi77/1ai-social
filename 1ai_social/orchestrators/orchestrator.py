@@ -1,7 +1,7 @@
 """Main orchestrator tying together the full content pipeline."""
 
-from typing import Dict, List, Any, Optional
-from ..models import Platform, Post
+from typing import Dict, List, Any
+from ..models import Platform
 from ..logging_config import get_logger
 
 logger = get_logger(__name__)

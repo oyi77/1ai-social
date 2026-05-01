@@ -27,7 +27,6 @@ What it creates:
 
 import os
 import json
-import sys
 import argparse
 
 # ── SCRIPT TEMPLATES ──────────────────────────────────────────
@@ -333,7 +332,7 @@ def main():
     write_file('README.md', README_CONTENT, skip_existing)
 
     # ── Print next steps ──────────────────────────────────────
-    print(f"""
+    print("""
 ✅ Project structure created!
 
 Next steps:

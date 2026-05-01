@@ -6,11 +6,9 @@
 
 import os
 import sys
-import json
 import subprocess
 import logging
-from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Tuple
 
 # Configuration
 DB_CONTAINER = os.getenv("DB_CONTAINER", "1ai-social-postgres")

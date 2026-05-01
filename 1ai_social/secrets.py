@@ -13,7 +13,6 @@ import os
 import json
 import logging
 from typing import Dict, Optional, Any
-from functools import lru_cache
 
 try:
     import boto3

@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker, Session
 
 from . import security_headers
 from .cache import Cache
-from .rate_limiter import rate_limit, RateLimitExceeded, get_user_id_from_kwargs
+from .rate_limiter import rate_limit, get_user_id_from_kwargs
 from .tenant_context import get_tenant_middleware, require_tenant_context
 from .webhooks import WebhookVerificationError, create_verifier
 from .billing.lemonsqueezy import (

@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Test webhook signature verification."""
 
-import hashlib
-import hmac
 import time
 import os
 import sys

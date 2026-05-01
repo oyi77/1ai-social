@@ -4,7 +4,7 @@ Provides decorators to protect API endpoints with plan limits.
 """
 
 from functools import wraps
-from typing import Callable, Optional
+from typing import Callable
 import logging
 
 from .plans import get_limit_value, check_feature_enabled, is_within_limit

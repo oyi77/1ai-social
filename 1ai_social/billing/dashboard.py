@@ -6,13 +6,12 @@ invoices, and payment methods.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
 from .plans import get_plan_config, get_plan_limits
 from .usage import get_current_month_usage, get_usage_summary
 from .lemonsqueezy import Subscription
-from .usage import UsageEvent
 
 logger = logging.getLogger(__name__)
 
