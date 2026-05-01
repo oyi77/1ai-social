@@ -9,8 +9,6 @@ from sqlalchemy import (
     DateTime,
     Text,
     ForeignKey,
-    Enum,
-    Boolean,
     Index,
 )
 from sqlalchemy.ext.declarative import declarative_base

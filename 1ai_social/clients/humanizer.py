@@ -1,8 +1,7 @@
 """Humanizer client for polishing AI-generated captions to sound natural."""
 
 import re
-import json
-from typing import List, Dict, Optional
+from typing import List, Dict
 import requests
 
 from .base import BaseClient

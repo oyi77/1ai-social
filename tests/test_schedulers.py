@@ -1,9 +1,7 @@
 """Tests for scheduler classes."""
 
-import sys
 import importlib
 import tempfile
-import json
 from pathlib import Path
 
 scheduler_mod = importlib.import_module("1ai_social.schedulers.scheduler")
@@ -38,14 +36,16 @@ class TestScheduler:
     def test_schedule_job(self):
         """Test scheduling a job."""
         scheduler = Scheduler()
-        callback = lambda: None
+        def callback():
+            pass
         job_id = scheduler.schedule_job("0 7 * * *", callback, "test_job")
         assert job_id == "test_job"
 
     def test_schedule_job_invalid_cron(self):
         """Test scheduling with invalid cron raises error."""
         scheduler = Scheduler()
-        callback = lambda: None
+        def callback():
+            pass
         try:
             scheduler.schedule_job("invalid", callback)
             assert False, "Should raise ValueError"
@@ -55,7 +55,8 @@ class TestScheduler:
     def test_schedule_job_auto_id(self):
         """Test job gets auto-generated ID."""
         scheduler = Scheduler()
-        callback = lambda: None
+        def callback():
+            pass
         job_id = scheduler.schedule_job("0 7 * * *", callback)
         assert job_id is not None
         assert isinstance(job_id, str)
@@ -63,7 +64,8 @@ class TestScheduler:
     def test_remove_job(self):
         """Test removing a job."""
         scheduler = Scheduler()
-        callback = lambda: None
+        def callback():
+            pass
         job_id = scheduler.schedule_job("0 7 * * *", callback, "remove_test")
         result = scheduler.remove_job(job_id)
         assert result is True
@@ -89,7 +91,8 @@ class TestScheduler:
     def test_get_jobs(self):
         """Test getting all jobs."""
         scheduler = Scheduler()
-        callback = lambda: None
+        def callback():
+            pass
         scheduler.schedule_job("0 7 * * *", callback, "job1")
         scheduler.schedule_job("0 8 * * *", callback, "job2")
         jobs = scheduler.get_jobs()

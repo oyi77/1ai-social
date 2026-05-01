@@ -1,8 +1,7 @@
 """Tests for client classes."""
 
-import sys
 import importlib
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock
 
 clients_base = importlib.import_module("1ai_social.clients.base")
 BaseClient = clients_base.BaseClient

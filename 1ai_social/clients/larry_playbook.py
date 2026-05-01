@@ -7,7 +7,7 @@ and memory-based learning for content optimization.
 Formula: [Person's problem] + [Doubt/Conflict] → "Showed them AI result" → They changed mind
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from .base import BaseClient

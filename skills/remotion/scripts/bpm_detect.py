@@ -173,7 +173,7 @@ def main():
         with open(args.out, 'w') as f:
             json.dump(data, f, indent=2)
         print(f"✅ Saved to: {args.out}")
-        print(f"   Import: import bpmData from '../public/bpm.json'")
+        print("   Import: import bpmData from '../public/bpm.json'")
     else:
         print(f"ℹ  Add --save to write to {args.out}")
 

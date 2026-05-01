@@ -237,12 +237,12 @@ def main():
 
         line_count = srt_content.count('\n\n') + 1
         print(f"✅ SRT written: {out_path} ({line_count} subtitle cards)")
-        print(f"\nBurn into video:")
+        print("\nBurn into video:")
         print(f"  ffmpeg -i out/video.mp4 -vf \"subtitles={out_path}\" out/final.mp4")
-        print(f"\nStyled (white text, black outline):")
-        print(f"  ffmpeg -i out/video.mp4 \\")
+        print("\nStyled (white text, black outline):")
+        print("  ffmpeg -i out/video.mp4 \\")
         print(f'    -vf "subtitles={out_path}:force_style=\'FontSize=28,PrimaryColour=&HFFFFFF,Outline=2\'" \\')
-        print(f"    out/final-subtitled.mp4")
+        print("    out/final-subtitled.mp4")
 
     # ── SRT → JSON ────────────────────────────────────────────
     elif ext == '.srt' or args.reverse:
@@ -257,12 +257,12 @@ def main():
             json.dump(captions, f, indent=2, ensure_ascii=False)
 
         print(f"✅ JSON written: {out_path}")
-        print(f"\nUse in Remotion:")
+        print("\nUse in Remotion:")
         print(f"  import captions from '../{out_path}'")
 
     else:
         print(f"❌ Unrecognised input type: {ext}")
-        print(f"   Supported: .json (→ SRT) or .srt (→ JSON with --reverse)")
+        print("   Supported: .json (→ SRT) or .srt (→ JSON with --reverse)")
         sys.exit(1)
 
 

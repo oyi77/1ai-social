@@ -2,9 +2,8 @@
 
 import pytest
 pytestmark = pytest.mark.skip(reason='Skipping for now')
-import time
 import importlib
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from redis.exceptions import RedisError
 
 cache_module = importlib.import_module("1ai_social.cache")

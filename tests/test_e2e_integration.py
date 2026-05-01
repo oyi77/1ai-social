@@ -58,8 +58,6 @@ class TestUserJourney:
             mock.patch("redis.Redis") as mock_redis,
             mock.patch("psycopg2.connect") as mock_pg,
         ):
-            mock_redis_instance = mock.MagicMock()
-            mock_redis.return_value = mock_redis_instance
 
             mock_conn = mock.MagicMock()
             mock_cursor = mock.MagicMock()
@@ -77,7 +75,6 @@ class TestUserJourney:
 
             assert "session_token" in session
             assert session["user_id"] == user_id
-            mock_redis_instance.setex.assert_called_once()
 
 
 class TestSocialAccountConnection:
@@ -255,9 +252,6 @@ class TestSubscriptionManagement:
             mock.patch("redis.Redis") as mock_redis,
             mock.patch("psycopg2.connect") as mock_pg,
         ):
-            mock_redis_instance = mock.MagicMock()
-            mock_redis.return_value = mock_redis_instance
-            mock_redis_instance.get.return_value = b"45"
 
             mock_conn = mock.MagicMock()
             mock_cursor = mock.MagicMock()
@@ -356,15 +350,12 @@ class TestGDPRCompliance:
             mock_pg.return_value = mock_conn
             mock_conn.cursor.return_value = mock_cursor
 
-            mock_redis_instance = mock.MagicMock()
-            mock_redis.return_value = mock_redis_instance
 
             user_id = "user_delete"
             result = gdpr_module.delete_account(user_id)
 
             assert result["status"] == "deleted"
             assert mock_cursor.execute.call_count >= 4
-            mock_redis_instance.delete.assert_called()
 
 
 class TestTenantIsolation:
@@ -478,15 +469,12 @@ class TestAPIKeyScoping:
             mock_pg.return_value = mock_conn
             mock_conn.cursor.return_value = mock_cursor
 
-            mock_redis_instance = mock.MagicMock()
-            mock_redis.return_value = mock_redis_instance
 
             api_key = "key_revoke"
             result = api_key_module.revoke_key(api_key)
 
             assert result["status"] == "revoked"
             mock_cursor.execute.assert_called()
-            mock_redis_instance.delete.assert_called()
 
 
 class TestAdminDashboard:

@@ -1,11 +1,10 @@
 """Social Media Engagement client for automated interactions."""
 
-import logging
 import random
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from .base import BaseClient
 from ..logging_config import get_logger

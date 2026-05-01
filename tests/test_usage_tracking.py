@@ -1,16 +1,12 @@
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+import importlib
+from datetime import datetime, timedelta
 """Test usage tracking and metering functionality."""
 
 import pytest
 pytestmark = pytest.mark.skip(reason='Skipping for now')
-from datetime import datetime, timedelta
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
 
-import sys
-import os
-import importlib
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 usage_module = importlib.import_module("1ai_social.billing.usage")
 plans_module = importlib.import_module("1ai_social.billing.plans")

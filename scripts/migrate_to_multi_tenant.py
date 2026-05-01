@@ -282,7 +282,7 @@ def migrate_to_multi_tenant():
             total_records = sum(after_counts.values())
             print(f"  Total records migrated: {total_migrated}")
             print(f"  Total records in database: {total_records}")
-            print(f"  Data loss: None")
+            print("  Data loss: None")
             print()
             print("All existing data has been assigned to the default tenant.")
             print("No data was lost during migration.")
@@ -447,7 +447,7 @@ def rollback_migration():
             total_rolled_back = sum(updated_counts.values())
             print(f"  Total records rolled back: {total_rolled_back}")
             print(f"  Default tenant deleted: {'Yes' if deleted > 0 else 'No'}")
-            print(f"  Data loss: None")
+            print("  Data loss: None")
             print()
             print("All records have been reverted to NULL tenant_id.")
         else:
@@ -502,13 +502,13 @@ def verify_migration_status():
         tenant = result.fetchone()
 
         if tenant:
-            print(f"  ✓ Default tenant exists")
+            print("  ✓ Default tenant exists")
             print(f"    ID: {tenant[0]}")
             print(f"    Name: {tenant[1]}")
             print(f"    Plan: {tenant[2]}")
             print(f"    Status: {tenant[3]}")
         else:
-            print(f"  ✗ Default tenant does not exist")
+            print("  ✗ Default tenant does not exist")
 
         print()
 

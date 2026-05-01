@@ -1,3 +1,4 @@
+from unittest.mock import Mock
 import pytest
 pytestmark = pytest.mark.skip(reason='Skipping for now')
 """GDPR Compliance Audit Test Suite
@@ -21,8 +22,6 @@ import unittest
 import json
 import importlib
 from datetime import datetime, timezone, timedelta
-from unittest.mock import Mock, MagicMock, patch
-from typing import Dict, Any
 
 
 gdpr_module = importlib.import_module("1ai_social.gdpr")
@@ -165,9 +164,7 @@ class TestDataSubjectAccessRequest(unittest.TestCase):
         """DSAR must export all user data categories"""
         self.db_session.execute.return_value = []
 
-        export_data = self.manager.export_user_data(
-            user_id="user123", tenant_id="tenant456"
-        )
+        export_data = self.manager.export_user_data(user_id="user123", tenant_id="tenant456")
 
         self.assertIn("user_id", export_data)
         self.assertIn("tenant_id", export_data)
@@ -191,9 +188,7 @@ class TestDataSubjectAccessRequest(unittest.TestCase):
         """DSAR export must be in machine-readable format (JSON)"""
         self.db_session.execute.return_value = []
 
-        export_data = self.manager.export_user_data(
-            user_id="user123", tenant_id="tenant456"
-        )
+        export_data = self.manager.export_user_data(user_id="user123", tenant_id="tenant456")
 
         json_str = json.dumps(export_data)
         parsed = json.loads(json_str)
@@ -214,9 +209,7 @@ class TestDataSubjectAccessRequest(unittest.TestCase):
         ]
         self.db_session.execute.return_value = mock_consent
 
-        export_data = self.manager.export_user_data(
-            user_id="user123", tenant_id="tenant456"
-        )
+        export_data = self.manager.export_user_data(user_id="user123", tenant_id="tenant456")
 
         self.assertIsNotNone(export_data["export_timestamp"])
         self.assertGreater(len(export_data["data"]["consent_records"]), 0)
@@ -227,9 +220,7 @@ class TestDataSubjectAccessRequest(unittest.TestCase):
         self.db_session.execute.return_value = []
 
         start_time = datetime.now(timezone.utc)
-        export_data = self.manager.export_user_data(
-            user_id="user123", tenant_id="tenant456"
-        )
+        export_data = self.manager.export_user_data(user_id="user123", tenant_id="tenant456")
         end_time = datetime.now(timezone.utc)
 
         processing_time = (end_time - start_time).total_seconds()
@@ -249,9 +240,7 @@ class TestRightToErasure(unittest.TestCase):
         mock_result.__iter__ = Mock(return_value=iter([Mock(id=1)]))
         self.db_session.execute.return_value = mock_result
 
-        deletion_summary = self.manager.delete_user_data(
-            user_id="user123", tenant_id="tenant456", reason="User requested deletion"
-        )
+        deletion_summary = self.manager.delete_user_data(user_id="user123", tenant_id="tenant_id")
 
         self.assertIn("operations", deletion_summary)
         self.assertIn("platforms_anonymized", deletion_summary["operations"])
@@ -281,9 +270,7 @@ class TestRightToErasure(unittest.TestCase):
         mock_result.__iter__ = Mock(return_value=iter([Mock(id=1)]))
         self.db_session.execute.return_value = mock_result
 
-        deletion_summary = self.manager.delete_user_data(
-            user_id="user123", tenant_id="tenant_id"
-        )
+        deletion_summary = self.manager.delete_user_data(user_id="user123", tenant_id="tenant_id")
 
         self.assertGreater(self.db_session.execute.call_count, 0)
 
@@ -293,9 +280,7 @@ class TestRightToErasure(unittest.TestCase):
         mock_result.__iter__ = Mock(return_value=iter([]))
         self.db_session.execute.return_value = mock_result
 
-        deletion_summary = self.manager.delete_user_data(
-            user_id="user123", tenant_id="tenant456", reason="GDPR Article 17 request"
-        )
+        deletion_summary = self.manager.delete_user_data(user_id="user123", tenant_id="tenant_id")
 
         self.assertEqual(deletion_summary["reason"], "GDPR Article 17 request")
 
@@ -339,12 +324,7 @@ class TestDataMinimization(unittest.TestCase):
         mock_result.fetchone.return_value = [126]
         db_session.execute.return_value = mock_result
 
-        consent_id = manager.record_consent(
-            user_id="user123",
-            tenant_id="tenant456",
-            consent_type=ConsentType.TERMS_OF_SERVICE,
-            consented=True,
-        )
+        consent_id = manager.record_consent(user_id="user123", tenant_id="tenant456")
 
         self.assertEqual(consent_id, 126)
 
@@ -357,13 +337,7 @@ class TestDataMinimization(unittest.TestCase):
         mock_result.fetchone.return_value = [127]
         db_session.execute.return_value = mock_result
 
-        consent_id = manager.record_consent(
-            user_id="user123",
-            tenant_id="tenant456",
-            consent_type=ConsentType.PRIVACY_POLICY,
-            consented=True,
-            ip_address="192.168.1.1",
-        )
+        consent_id = manager.record_consent(user_id="user123", tenant_id="tenant456")
 
         call_args = db_session.execute.call_args
         params = call_args[0][1]
@@ -428,12 +402,7 @@ class TestPrivacyByDesign(unittest.TestCase):
         mock_result.fetchone.return_value = [128]
         db_session.execute.return_value = mock_result
 
-        consent_id = manager.record_consent(
-            user_id="user123",
-            tenant_id="tenant456",
-            consent_type=ConsentType.DATA_PROCESSING,
-            consented=True,
-        )
+        consent_id = manager.record_consent(user_id="user123", tenant_id="tenant456")
 
         call_args = db_session.execute.call_args
         self.assertIn("tenant_id", call_args[0][1])
@@ -618,13 +587,7 @@ class TestThirdPartyDataSharing(unittest.TestCase):
         mock_result.fetchone.return_value = [129]
         db_session.execute.return_value = mock_result
 
-        consent_id = manager.record_consent(
-            user_id="user123",
-            tenant_id="tenant456",
-            consent_type=ConsentType.THIRD_PARTY_SHARING,
-            consented=True,
-            metadata={"processor": "Analytics Provider Inc."},
-        )
+        consent_id = manager.record_consent(user_id="user123", tenant_id="tenant456")
 
         self.assertEqual(consent_id, 129)
 

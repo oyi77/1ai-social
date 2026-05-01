@@ -5,7 +5,7 @@ import asyncio
 import json
 import os
 import sys
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "1ai_social"))
 
@@ -109,7 +109,7 @@ async def main():
         json.dump(results["readiness_db_down"], f, indent=2)
 
     print("\n✓ All tests passed!")
-    print(f"✓ Evidence saved to .sisyphus/evidence/")
+    print("✓ Evidence saved to .sisyphus/evidence/")
 
 
 if __name__ == "__main__":

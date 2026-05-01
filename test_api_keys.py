@@ -68,7 +68,7 @@ def test_key_uniqueness():
         keys.add(api_key)
 
     assert len(keys) == 100, "All generated keys should be unique"
-    print(f"✓ Generated 100 unique keys")
+    print("✓ Generated 100 unique keys")
     print("✓ Key uniqueness test passed\n")
 
 

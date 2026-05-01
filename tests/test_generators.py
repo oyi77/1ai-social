@@ -1,8 +1,7 @@
 """Tests for generator classes."""
 
-import sys
 import importlib
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 models = importlib.import_module("1ai_social.models")
 Platform = models.Platform

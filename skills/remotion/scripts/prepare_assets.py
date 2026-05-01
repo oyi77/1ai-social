@@ -36,11 +36,9 @@ What it does:
 Output: public/images/ready/ and public/video/ready/
 """
 
-import sys
 import os
 import subprocess
 import argparse
-import shutil
 from pathlib import Path
 
 # ── CONFIG ────────────────────────────────────────────────────
@@ -310,9 +308,9 @@ def main():
 
     print(f"\n{'✅' if failed == 0 else '⚠️ '} Done: {processed} processed, {failed} failed")
     if processed > 0:
-        print(f"\nIn your Remotion composition, reference assets from the ready/ subfolder:")
-        print(f"  <Img src={{staticFile('images/ready/your-image.png')}} />")
-        print(f"  <OffthreadVideo src={{staticFile('video/ready/your-clip.mp4')}} />")
+        print("\nIn your Remotion composition, reference assets from the ready/ subfolder:")
+        print("  <Img src={staticFile('images/ready/your-image.png')} />")
+        print("  <OffthreadVideo src={staticFile('video/ready/your-clip.mp4')} />")
 
 
 if __name__ == '__main__':

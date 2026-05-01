@@ -11,11 +11,8 @@ Simulates 1000 concurrent users performing various operations:
 Run with: locust -f tests/load/locustfile.py --host=http://localhost:8000
 """
 
-import json
 import random
-import time
 from locust import HttpUser, task, between, events
-from locust.exception import RescheduleTask
 
 
 class UserSignup(HttpUser):

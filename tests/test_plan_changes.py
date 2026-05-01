@@ -2,12 +2,10 @@
 
 import pytest
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import create_engine, Column, String, DateTime, Column, String, DateTime
+from sqlalchemy import create_engine, Column, String, DateTime
 from sqlalchemy.orm import sessionmaker
 
-import sys
 
-sys.path.insert(0, "/home/openclaw/projects/1ai-social")
 
 plan_changes = __import__("1ai_social.billing.plan_changes", fromlist=["calculate_proration", "upgrade_plan", "downgrade_plan", "get_plan_change_preview", "PlanChangeError"])
 calculate_proration = plan_changes.calculate_proration

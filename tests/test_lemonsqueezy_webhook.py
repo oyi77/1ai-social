@@ -3,7 +3,6 @@
 import json
 import hashlib
 import hmac
-from datetime import datetime
 
 
 def test_webhook_signature():
@@ -30,9 +29,8 @@ def test_webhook_signature():
 
     signature = hmac.new(secret.encode("utf-8"), body_bytes, hashlib.sha256).hexdigest()
 
-    print(f"Payload: {body}")
-    print(f"Signature: {signature}")
-    print(f"\nTo test webhook, use:")
+    print("Payload: {body}")
+    print(f"Signature: {signature}\nTo test webhook, use:")
     print(f"  X-Signature: {signature}")
     print(f"  Body: {body}")
 
@@ -132,10 +130,9 @@ def generate_test_events():
         print(f"{'=' * 80}")
         print(f"\nX-Signature: {signature}")
         print(f"\nPayload:\n{body}")
-        print(f"\nCURL command:")
-        print(f"curl -X POST http://localhost:8000/webhooks/lemonsqueezy \\")
+        print("curl -X POST http://localhost:8000/webhooks/lemonsqueezy \\")
         print(f'  -H "X-Signature: {signature}" \\')
-        print(f'  -H "Content-Type: application/json" \\')
+        print('  -H "Content-Type: application/json" \\')
         print(f"  -d '{body.replace(chr(10), '')}'")
         print()
 

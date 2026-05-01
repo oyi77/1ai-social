@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from ..models import Platform
 from ..logging_config import get_logger

@@ -44,7 +44,7 @@ def test_rate_limit_simulation():
             reset_time = int(now + ((1 - tokens) / refill_rate))
             print(f"Request {i + 1:2d}: ✗ BLOCKED (429 Too Many Requests)")
             print(f"  X-RateLimit-Limit: {capacity}")
-            print(f"  X-RateLimit-Remaining: 0")
+            print("  X-RateLimit-Remaining: 0")
             print(f"  X-RateLimit-Reset: {reset_time}")
             print(f"  Retry-After: {reset_time - int(now)} seconds")
 
@@ -76,8 +76,8 @@ def test_rate_limit_simulation():
     window = 900
 
     print(f"Configuration: {capacity} requests per {window} seconds")
-    print(f"Per-user isolation: user:123:api, user:456:api")
-    print(f"\nSimulating burst traffic:\n")
+    print("Per-user isolation: user:123:api, user:456:api")
+    print("\nSimulating burst traffic:\n")
 
     for user_id in ["user:123", "user:456"]:
         tokens = capacity

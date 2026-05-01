@@ -69,27 +69,27 @@ def test_dunning_workflow():
     result = dunning.handle_payment_failure(tenant_id, subscription_id)
     assert result["status"] == "retry_scheduled"
     assert result["attempt_number"] == 1
-    print(f"   ✓ Payment failure recorded")
+    print("   ✓ Payment failure recorded")
     print(f"   ✓ Next retry: {result['next_retry_at']}")
 
     events = db.query(DunningEvent).filter_by(tenant_id=tenant_id).all()
     assert len(events) == 1
     assert events[0].event_type == "payment_failed"
     assert events[0].attempt_number == 1
-    print(f"   ✓ Dunning event created\n")
+    print("   ✓ Dunning event created\n")
 
     print("2. Testing retry schedule (Attempt 2)...")
     result = dunning.schedule_retry(tenant_id, 2)
     assert result["status"] == "retry_scheduled"
     assert result["attempt_number"] == 2
-    print(f"   ✓ Retry 2 scheduled")
+    print("   ✓ Retry 2 scheduled")
     print(f"   ✓ Next retry: {result['next_retry_at']}\n")
 
     print("3. Testing retry schedule (Attempt 3)...")
     result = dunning.schedule_retry(tenant_id, 3)
     assert result["status"] == "retry_scheduled"
     assert result["attempt_number"] == 3
-    print(f"   ✓ Retry 3 scheduled")
+    print("   ✓ Retry 3 scheduled")
     print(f"   ✓ Next retry: {result['next_retry_at']}\n")
 
     print("4. Testing account suspension (after 3 failures)...")

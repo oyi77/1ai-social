@@ -3,11 +3,10 @@
 Provides caching for frequently accessed data with automatic invalidation.
 """
 
-import json
 import logging
 import pickle
 from functools import wraps
-from typing import Any, Optional, Callable, Union
+from typing import Any, Optional, Callable
 import redis
 from redis.exceptions import RedisError
 

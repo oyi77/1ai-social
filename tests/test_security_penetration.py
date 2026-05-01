@@ -1,3 +1,6 @@
+from datetime import datetime, timedelta
+import importlib
+from unittest.mock import patch
 """
 Security Penetration Testing Suite for 1ai-social Platform
 Tests OWASP Top 10 vulnerabilities and platform-specific security controls
@@ -5,9 +8,6 @@ Tests OWASP Top 10 vulnerabilities and platform-specific security controls
 
 import pytest
 pytestmark = pytest.mark.skip(reason='Skipping for now')
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime, timedelta
-import importlib
 
 
 # Test SQL Injection Prevention
@@ -17,8 +17,7 @@ class TestSQLInjection:
     def test_user_query_with_malicious_input(self):
         """Test that SQL injection attempts in user queries are blocked"""
         db_module = importlib.import_module("1ai_social.database")
-        malicious_input = "'; DROP TABLE users; --"
-        # Verify parameterized queries are used
+                # Verify parameterized queries are used
         assert hasattr(db_module, "get_user_by_email")
 
     def test_search_query_injection_attempt(self):
@@ -40,7 +39,6 @@ class TestXSSPrevention:
 
     def test_post_content_script_injection(self):
         """Test that script tags in post content are sanitized"""
-        xss_payload = "<script>alert('XSS')</script>"
         posts_module = importlib.import_module("1ai_social.posts")
         # Verify sanitization exists
         assert hasattr(posts_module, "create_post")
@@ -65,8 +63,7 @@ class TestAuthBypass:
     def test_expired_token_rejection(self):
         """Test that expired JWT tokens are rejected"""
         auth_module = importlib.import_module("1ai_social.auth")
-        expired_time = datetime.utcnow() - timedelta(hours=2)
-        # Token validation should check expiry
+                # Token validation should check expiry
         assert hasattr(auth_module, "verify_token")
 
     def test_invalid_token_signature(self):

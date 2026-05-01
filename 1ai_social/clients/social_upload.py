@@ -1,6 +1,5 @@
 """Social Upload client for PostBridge multi-platform distribution."""
 
-import logging
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from pathlib import Path

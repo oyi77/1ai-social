@@ -90,7 +90,7 @@ async def run_pipeline(script_path: str, voice_key: str):
             print(f"  ✓ {sid}.mp3 done")
 
     # Step 2: Measure durations + build timing.json
-    print(f"\n⏱️  Computing timing...")
+    print("\n⏱️  Computing timing...")
     timing = {'fps': FPS, 'scenes': [], 'totalFrames': 0, 'totalSeconds': 0}
     cumulative_frame = 0
 
@@ -129,13 +129,13 @@ async def run_pipeline(script_path: str, voice_key: str):
     with open('public/timing.json', 'w', encoding='utf-8') as f:
         json.dump(timing, f, indent=2, ensure_ascii=False)
 
-    print(f"\n✅ Pipeline complete!")
+    print("\n✅ Pipeline complete!")
     print(f"   Total: {cumulative_frame} frames = {timing['totalSeconds']}s")
-    print(f"   Timing saved: public/timing.json")
-    print(f"\n🎬 Next steps:")
-    print(f"   1. Update src/Root.tsx to use timing.json")
-    print(f"   2. npm run dev  (preview in Remotion Studio)")
-    print(f"   3. npx remotion render NarratedVideo out/video.mp4")
+    print("   Timing saved: public/timing.json")
+    print("\n🎬 Next steps:")
+    print("   1. Update src/Root.tsx to use timing.json")
+    print("   2. npm run dev  (preview in Remotion Studio)")
+    print("   3. npx remotion render NarratedVideo out/video.mp4")
 
 
 def main():
@@ -147,7 +147,7 @@ def main():
 
     if not os.path.exists(args.script):
         print(f"❌ Script not found: {args.script}")
-        print(f"   Create public/script.json with scenes array")
+        print("   Create public/script.json with scenes array")
         sys.exit(1)
 
     asyncio.run(run_pipeline(args.script, args.voice))

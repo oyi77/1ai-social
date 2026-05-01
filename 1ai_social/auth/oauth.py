@@ -8,10 +8,9 @@ Provides secure OAuth authentication with:
 - Automatic user creation on first login
 """
 
-import os
 import secrets
 import logging
-from typing import Dict, Optional, Any
+from typing import Dict, Any
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
@@ -19,8 +18,8 @@ import httpx
 from sqlalchemy import create_engine, select, update, delete
 from sqlalchemy.orm import sessionmaker, Session
 
-from ..secrets import get_secret, get_required_secret
-from ..encryption import encrypt_token, decrypt_token
+from ..secrets import get_required_secret
+from ..encryption import encrypt_token
 from ..db_models import Base
 
 logger = logging.getLogger(__name__)

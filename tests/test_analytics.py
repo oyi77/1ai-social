@@ -2,12 +2,10 @@ import pytest
 pytestmark = pytest.mark.skip(reason='Skipping for now')
 """Tests for analytics classes."""
 
-import sys
 import importlib
 import tempfile
 import json
 from pathlib import Path
-from datetime import datetime
 
 models = importlib.import_module("1ai_social.models")
 Platform = models.Platform

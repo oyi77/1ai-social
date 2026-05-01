@@ -1,8 +1,7 @@
+from datetime import datetime, timezone
 """Tests for Pydantic models."""
 
-import sys
 import importlib
-from datetime import datetime, timezone
 
 # Import models using importlib due to package name starting with digit
 models = importlib.import_module("1ai_social.models")

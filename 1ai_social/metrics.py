@@ -1,7 +1,6 @@
 """Prometheus metrics for 1ai-social monitoring."""
 
 import logging
-from typing import Optional
 
 from prometheus_client import (
     Counter,
